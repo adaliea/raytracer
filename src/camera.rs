@@ -1,5 +1,5 @@
-use glam::Vec3A;
 use crate::ray::Ray;
+use glam::Vec3A;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Camera {
@@ -10,13 +10,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(
-        look_from: Vec3A,
-        look_at: Vec3A,
-        vup: Vec3A,
-        vfov: f32,
-        aspect_ratio: f32,
-    ) -> Self {
+    pub fn new(look_from: Vec3A, look_at: Vec3A, vup: Vec3A, vfov: f32, aspect_ratio: f32) -> Self {
         let theta = vfov.to_radians();
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h;
@@ -42,7 +36,8 @@ impl Camera {
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
         Ray {
             origin: self.origin,
-            direction: self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+            direction: self.lower_left_corner + u * self.horizontal + v * self.vertical
+                - self.origin,
         }
     }
 }

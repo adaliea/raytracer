@@ -1,6 +1,5 @@
-use glam::Vec3A;
 use crate::ray::Ray;
-use crate::material::Material;
+use glam::Vec3A;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -9,10 +8,11 @@ pub struct HitRecord {
     pub normal: Vec3A,
     pub t: f32,
     pub front_face: bool,
-    pub material: Material,
+    pub material_index: usize,
 }
 
 impl HitRecord {
+    #[inline(always)]
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3A) {
         self.front_face = r.direction.dot(outward_normal) < 0.0;
         self.normal = if self.front_face {
@@ -24,7 +24,7 @@ impl HitRecord {
 }
 
 pub trait Hittable: Send + Sync {
-    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +33,7 @@ pub enum HittableObject {
 }
 
 impl Hittable for HittableObject {
-    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         match self {
             HittableObject::Sphere(s) => s.hit(r, t_min, t_max),
         }
@@ -44,10 +44,11 @@ impl Hittable for HittableObject {
 pub struct Sphere {
     pub center: Vec3A,
     pub radius: f32,
-    pub material: Material,
+    pub material_index: usize,
 }
 
 impl Hittable for Sphere {
+    #[inline(always)]
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = r.origin - self.center;
         let a = r.direction.length_squared();
@@ -75,8 +76,8 @@ impl Hittable for Sphere {
             t,
             p,
             normal: Vec3A::ZERO, // Placeholder
-            front_face: false, // Placeholder
-            material: self.material.clone(),
+            front_face: false,   // Placeholder
+            material_index: self.material_index,
         };
         rec.set_face_normal(r, outward_normal);
 

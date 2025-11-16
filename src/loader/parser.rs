@@ -1,6 +1,6 @@
+use crate::loader::file_format::{Background, Camera, Light, Material, Object, Scene};
 use glam::Vec3A;
 use std::iter::Peekable;
-use crate::loader::file_format::{Background, Camera, Light, Material, Object, Scene};
 
 pub fn parse_ray_file(contents: &str) -> Scene {
     let mut scene = Scene::default();
@@ -45,7 +45,9 @@ fn parse_background<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) ->
                 tokens.next(); // consume '}'
                 break;
             }
-            _ => { tokens.next(); } // ignore unknown tokens
+            _ => {
+                tokens.next();
+            } // ignore unknown tokens
         }
     }
     background
@@ -76,7 +78,9 @@ fn parse_camera<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Cam
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
     camera
@@ -95,7 +99,9 @@ fn parse_lights<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
     lights
@@ -118,7 +124,9 @@ fn parse_light<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Ligh
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
     light
@@ -137,7 +145,9 @@ fn parse_materials<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> 
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
     materials
@@ -183,7 +193,9 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
     material
@@ -202,7 +214,9 @@ fn parse_group<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
     objects
@@ -231,12 +245,17 @@ fn parse_sphere<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Obj
                 tokens.next();
                 break;
             }
-            _ => { tokens.next(); }
+            _ => {
+                tokens.next();
+            }
         }
     }
-    Object::Sphere { material_index, center, radius }
+    Object::Sphere {
+        material_index,
+        center,
+        radius,
+    }
 }
-
 
 fn parse_vec3a<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec3A {
     let x = parse_f32(tokens);

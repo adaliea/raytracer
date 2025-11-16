@@ -1,23 +1,22 @@
 mod camera;
 mod hittable;
+mod loader;
 mod material;
 mod ray;
 mod scene;
-mod loader;
 
-use std::fs::create_dir;
-use std::io::Error;
-use std::path::Path;
+use crate::hittable::Hittable;
+use crate::ray::Ray;
+use crate::scene::Scene;
 use clap::Parser;
 use env_logger::Env;
 use glam::Vec3A;
 use image::{ImageBuffer, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
-use log::{info};
+use log::info;
 use rayon::prelude::*;
-use crate::hittable::Hittable;
-use crate::ray::Ray;
-use crate::scene::Scene;
+use std::fs::create_dir;
+use std::path::Path;
 
 #[inline]
 fn ray_color(r: &Ray, world: &Scene) -> Vec3A {
@@ -28,7 +27,6 @@ fn ray_color(r: &Ray, world: &Scene) -> Vec3A {
     let t = 0.5 * (unit_direction.y + 1.0);
     (1.0 - t) * Vec3A::ONE + t * Vec3A::new(0.5, 0.7, 1.0)
 }
-
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -47,13 +45,14 @@ struct Args {
 
     /// Samples per pixel
     #[arg(short, long, default_value_t = 1)]
-    samples: u32
+    samples: u32,
 }
 
 fn main() {
-    let args = Args::parse();
+    color_backtrace::install();
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
 
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    let args = Args::parse();
 
     // Image
     let aspect_ratio = args.width as f32 / args.height as f32;
@@ -61,13 +60,16 @@ fn main() {
     let image_height = args.height;
     let samples_per_pixel = args.samples;
 
-    info!("Loading scene from {} with {} samples per pixel", args.scene_path, args.samples);
+    info!(
+        "Loading scene from {} with {} samples per pixel",
+        args.scene_path, args.samples
+    );
     info!("Rendering image {}x{}...", image_width, image_height);
 
     // Scene
-    let scene = loader::load_scene(&args.scene_path, aspect_ratio).expect(&format!("Failed to load scene from {}", args.scene_path));
+    let scene = loader::load_scene(&args.scene_path, aspect_ratio)
+        .expect(&format!("Failed to load scene from {}", args.scene_path));
     info!("Loaded scene with {} objects", scene.objects.len());
-
 
     // Progress bar
     let bar = ProgressBar::new(image_height as u64 * image_width as u64);
@@ -79,8 +81,7 @@ fn main() {
     );
 
     // Render
-    let mut buffer: ImageBuffer<Rgb<u8>, Vec<u8>> =
-        ImageBuffer::new(image_width, image_height);
+    let mut buffer: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(image_width, image_height);
 
     // parallelizes per image row
     buffer
@@ -104,14 +105,16 @@ fn main() {
             bar.inc(1);
         });
 
-
     bar.finish();
 
     let path = Path::new(&args.scene_path);
     let filename = path.file_stem().unwrap().to_str().unwrap();
     let dir = Path::new("output");
     if !dir.exists() || !dir.is_dir() {
-        create_dir(dir).expect(&format!("Failed to create output directory {}", dir.display()));
+        create_dir(dir).expect(&format!(
+            "Failed to create output directory {}",
+            dir.display()
+        ));
     }
     // Save image
     buffer.save(format!("output/{}.png", filename)).unwrap();

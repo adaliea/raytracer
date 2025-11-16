@@ -1,8 +1,15 @@
 use glam::Vec3A;
+use image::RgbImage;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(dead_code)]
-pub enum Material {
-    Lambertian { albedo: Vec3A },
-    Metal { albedo: Vec3A, fuzz: f32 },
+pub struct Material {
+    pub texture: RgbImage,
+    pub diffuse_color: Vec3A,
+    pub specular_color: Vec3A,
+    pub reflective_color: Vec3A,
+    pub shininess: f32,
+    pub metallicity: f32,
+    pub refractive_index: f32,
+    pub transparent_color: Vec3A,
 }

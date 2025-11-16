@@ -14,3 +14,7 @@ log = "0.4"
 rayon = "1.11"
 clap = { version = "4", features = ["derive"] }
 bvh = { version = "0.11.0", features = ["simd"] }
+color-backtrace = { version = "0.7" }
+
+[profile.release]
+debug = true
