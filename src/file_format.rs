@@ -1,0 +1,50 @@
+use glam::Vec3A;
+
+#[derive(Debug, Default)]
+pub struct Background {
+    pub color: Vec3A,
+    pub ambient_light: Vec3A,
+}
+
+#[derive(Debug, Default)]
+pub struct Camera {
+    pub eye: Vec3A,
+    pub look_at: Vec3A,
+    pub up: Vec3A,
+    pub fovy: f32,
+}
+
+#[derive(Debug, Default)]
+pub struct Light {
+    pub position: Vec3A,
+    pub color: Vec3A,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Material {
+    pub texture_filename: Option<String>,
+    pub diffuse_color: Vec3A,
+    pub specular_color: Vec3A,
+    pub reflective_color: Vec3A,
+    pub shininess: f32,
+    pub transparent_color: Vec3A,
+    pub index_of_refraction: f32,
+}
+
+#[derive(Debug)]
+pub enum Object {
+    Sphere {
+        material_index: usize,
+        center: Vec3A,
+        radius: f32,
+    },
+}
+
+#[derive(Debug, Default)]
+pub struct Scene {
+    pub background: Background,
+    pub camera: Camera,
+    pub lights: Vec<Light>,
+    pub materials: Vec<Material>,
+    pub objects: Vec<Object>,
+}
