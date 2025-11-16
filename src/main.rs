@@ -4,14 +4,12 @@ mod material;
 mod ray;
 mod scene;
 mod loader;
-mod file_format;
-mod parser;
 
 use clap::Parser;
 use glam::Vec3A;
 use image::{ImageBuffer, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
-use log::{info, log};
+use log::{info};
 use rayon::prelude::*;
 use crate::hittable::Hittable;
 use crate::ray::Ray;
@@ -84,7 +82,7 @@ fn main() {
         .enumerate_rows_mut()
         .par_bridge()
         .for_each(|(j, row)| {
-            for (i, (x, y, pixel)) in row.enumerate() {
+            for (i, (_x, _y, pixel)) in row.enumerate() {
                 let u = i as f32 / (image_width - 1) as f32;
                 let v = (image_height - j - 1) as f32 / (image_height - 1) as f32;
                 let r = scene.camera.get_ray(u, v);

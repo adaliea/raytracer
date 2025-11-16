@@ -3,6 +3,7 @@ use crate::ray::Ray;
 use crate::material::Material;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct HitRecord {
     pub p: Vec3A,
     pub normal: Vec3A,

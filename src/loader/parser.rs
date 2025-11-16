@@ -1,35 +1,34 @@
 use glam::Vec3A;
-use crate::file_format::*;
 use std::iter::Peekable;
-use std::str::SplitWhitespace;
+use crate::loader::file_format::{Background, Camera, Light, Material, Object, Scene};
 
 pub fn parse_ray_file(contents: &str) -> Scene {
     let mut scene = Scene::default();
-    let mut tokens = contents.split_whitespace().peekable();
+    let all_tokens: Vec<&str> = contents
+        .lines()
+        .flat_map(|line| {
+            let line_without_comments = line.split('#').next().unwrap_or("").trim();
+            line_without_comments.split_whitespace()
+        })
+        .collect();
+
+    let mut tokens = all_tokens.into_iter().peekable();
 
     while let Some(token) = tokens.next() {
         match token {
-            "#" => {
-                // Comment, skip until newline
-                let remaining = tokens.next().unwrap_or("").to_string();
-                let mut line = remaining;
-                while !line.contains('\n') {
-                    line = tokens.next().unwrap_or("").to_string();
-                }
-            }
             "Background" => scene.background = parse_background(&mut tokens),
             "Camera" => scene.camera = parse_camera(&mut tokens),
             "Lights" => scene.lights = parse_lights(&mut tokens),
             "Materials" => scene.materials = parse_materials(&mut tokens),
             "Group" => scene.objects = parse_group(&mut tokens),
-            _ => {} 
+            _ => {}
         }
     }
 
     scene
 }
 
-fn parse_background(tokens: &mut Peekable<SplitWhitespace>) -> Background {
+fn parse_background<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Background {
     let mut background = Background::default();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -52,7 +51,7 @@ fn parse_background(tokens: &mut Peekable<SplitWhitespace>) -> Background {
     background
 }
 
-fn parse_camera(tokens: &mut Peekable<SplitWhitespace>) -> Camera {
+fn parse_camera<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Camera {
     let mut camera = Camera::default();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -83,7 +82,7 @@ fn parse_camera(tokens: &mut Peekable<SplitWhitespace>) -> Camera {
     camera
 }
 
-fn parse_lights(tokens: &mut Peekable<SplitWhitespace>) -> Vec<Light> {
+fn parse_lights<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<Light> {
     let mut lights = Vec::new();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -102,7 +101,7 @@ fn parse_lights(tokens: &mut Peekable<SplitWhitespace>) -> Vec<Light> {
     lights
 }
 
-fn parse_light(tokens: &mut Peekable<SplitWhitespace>) -> Light {
+fn parse_light<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Light {
     let mut light = Light::default();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -125,7 +124,7 @@ fn parse_light(tokens: &mut Peekable<SplitWhitespace>) -> Light {
     light
 }
 
-fn parse_materials(tokens: &mut Peekable<SplitWhitespace>) -> Vec<Material> {
+fn parse_materials<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<Material> {
     let mut materials = Vec::new();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -144,7 +143,7 @@ fn parse_materials(tokens: &mut Peekable<SplitWhitespace>) -> Vec<Material> {
     materials
 }
 
-fn parse_material(tokens: &mut Peekable<SplitWhitespace>) -> Material {
+fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Material {
     let mut material = Material::default();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -190,7 +189,7 @@ fn parse_material(tokens: &mut Peekable<SplitWhitespace>) -> Material {
     material
 }
 
-fn parse_group(tokens: &mut Peekable<SplitWhitespace>) -> Vec<Object> {
+fn parse_group<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<Object> {
     let mut objects = Vec::new();
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
@@ -209,7 +208,7 @@ fn parse_group(tokens: &mut Peekable<SplitWhitespace>) -> Vec<Object> {
     objects
 }
 
-fn parse_sphere(tokens: &mut Peekable<SplitWhitespace>) -> Object {
+fn parse_sphere<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
     let mut material_index = 0;
     let mut center = Vec3A::ZERO;
     let mut radius = 0.0;
@@ -239,22 +238,22 @@ fn parse_sphere(tokens: &mut Peekable<SplitWhitespace>) -> Object {
 }
 
 
-fn parse_vec3a(tokens: &mut Peekable<SplitWhitespace>) -> Vec3A {
+fn parse_vec3a<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec3A {
     let x = parse_f32(tokens);
     let y = parse_f32(tokens);
     let z = parse_f32(tokens);
     Vec3A::new(x, y, z)
 }
 
-fn parse_f32(tokens: &mut Peekable<SplitWhitespace>) -> f32 {
+fn parse_f32<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> f32 {
     tokens.next().unwrap().parse().unwrap()
 }
 
-fn parse_usize(tokens: &mut Peekable<SplitWhitespace>) -> usize {
+fn parse_usize<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> usize {
     tokens.next().unwrap().parse().unwrap()
 }
 
-fn expect_token(tokens: &mut Peekable<SplitWhitespace>, expected: &str) {
+fn expect_token<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>, expected: &str) {
     let next_token = tokens.next();
     if next_token != Some(expected) {
         // A simple way to handle errors, you might want to implement more robust error handling
