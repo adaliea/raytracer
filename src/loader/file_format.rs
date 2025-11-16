@@ -1,4 +1,4 @@
-use glam::Vec3A;
+use glam::{Vec2, Vec3A};
 
 #[derive(Debug, Default)]
 pub struct Background {
@@ -38,6 +38,15 @@ pub enum Object {
         center: Vec3A,
         radius: f32,
     },
+    Triangle {
+        vertex0: Vec3A,
+        vertex1: Vec3A,
+        vertex2: Vec3A,
+        tex_xy_0: Vec2,
+        tex_xy_1: Vec2,
+        tex_xy_2: Vec2,
+        material_index: usize,
+    }
 }
 
 #[derive(Debug, Default)]

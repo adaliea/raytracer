@@ -2,24 +2,22 @@ mod file_format;
 mod parser;
 
 use crate::camera::Camera;
-use crate::hittable::{HittableObject, Sphere};
-use crate::material::Material;
+use crate::hittable::{HittableObject, Sphere, Triangle};
+use crate::material::{Material, Texture};
 use crate::scene::Scene;
-use image::RgbImage;
-use log::{debug, error};
+use glam::Vec3A;
+use image::{ImageError, RgbImage};
+use log::{debug, warn};
 use std::fs;
+use std::sync::Arc;
 
-fn load_texture(texture_path: &str, scene_path: &str) -> RgbImage {
+fn load_texture(texture_path: &str, scene_path: &str) -> Result<RgbImage, ImageError> {
     let texture_path = std::path::Path::new(scene_path)
         .parent()
         .unwrap()
         .join(texture_path);
     let img = image::open(&texture_path);
-    if !img.is_ok() {
-        error!("Texture not found: {}", &texture_path.display());
-    }
     img.map(|i| i.to_rgb8())
-        .unwrap_or_else(|_| RgbImage::from_pixel(1, 1, image::Rgb([255, 255, 255])))
 }
 
 pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error> {
@@ -35,58 +33,121 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
         aspect_ratio,
     );
 
-    let materials: Vec<Material> = file_scene
-        .materials
-        .into_iter()
-        .enumerate()
-        .map(|(_i, mat)| {
-            let texture = if mat.texture_filename.is_some() {
-                load_texture(mat.texture_filename.as_ref().unwrap(), path)
-            } else {
-                RgbImage::from_pixel(1, 1, image::Rgb([255, 255, 255]))
-            };
-            debug!("Loading mat: {:#?}", &mat);
-            Material {
-                texture,
-                diffuse_color: mat.diffuse_color,
-                specular_color: mat.specular_color,
-                reflective_color: mat.reflective_color,
-                metallicity: 0.0,
-                shininess: mat.shininess,
-                transparent_color: mat.transparent_color,
-                refractive_index: mat.index_of_refraction,
-            }
-        })
-        .collect();
+    let mut materials: Vec<Arc<Material>> = Vec::new();
+    let mut objects: Vec<HittableObject> = Vec::new();
 
-    let objects: Vec<HittableObject> = file_scene
-        .objects
-        .into_iter()
-        .map(|obj| match obj {
+    for mat in file_scene.materials {
+        let fuzz = (1.0 - (mat.shininess / 100.0)).max(0.0).min(1.0);
+
+        let material = if mat.transparent_color.length() > 0.0 {
+            Material::Dielectric {
+                index_of_refraction: mat.index_of_refraction,
+                fuzz,
+            }
+        } else if mat.reflective_color.length() > 0.0 {
+            Material::Metallic {
+                albedo: Texture::SolidColor(mat.reflective_color),
+                fuzz,
+            }
+        } else {
+            // Check for texture
+            let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
+                Texture::Image(
+                    load_texture(&filename, path)
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?,
+                )
+            } else {
+                Texture::SolidColor(mat.diffuse_color)
+            };
+            Material::Lambertian { albedo }
+        };
+
+        materials.push(Arc::new(material));
+    }
+
+    if materials.is_empty() {
+        materials.push(Arc::new(Material::Lambertian {
+            albedo: Texture::SolidColor(Vec3A::splat(0.5)),
+        }));
+        warn!("No materials found, using default");
+    }
+
+    for obj in file_scene.objects {
+        let obj = match obj {
             file_format::Object::Sphere {
                 material_index,
                 center,
                 radius,
             } => {
-                let valid_index = if (material_index + 1) < materials.len() {
-                    material_index + 1
+                let material = if material_index < materials.len() {
+                    materials[material_index].clone()
                 } else {
-                    0
+                    materials[0].clone()
                 };
 
                 HittableObject::Sphere(Sphere {
                     center,
                     radius,
-                    material_index: valid_index,
+                    material,
                 })
             }
-        })
-        .collect();
+            file_format::Object::Triangle {
+                vertex0,
+                vertex1,
+                vertex2,
+                tex_xy_0,
+                tex_xy_1,
+                tex_xy_2,
+                material_index,
+            } => {
+                let material = if material_index < materials.len() {
+                    materials[material_index].clone()
+                } else {
+                    materials[0].clone()
+                };
+
+                HittableObject::Triangle(Triangle {
+                    v0: vertex0,
+                    v1: vertex1,
+                    v2: vertex2,
+                    uv0: tex_xy_0,
+                    uv1: tex_xy_1,
+                    uv2: tex_xy_2,
+                    material,
+                })
+            }
+        };
+
+        objects.push(obj);
+    }
+
+    let default_light_strength = 10.0;
+    let default_light_radius = 0.25;
+    let mut lights: Vec<usize> = Vec::new();
+
+    for light in file_scene.lights {
+        let emissive_material = Arc::new(Material::Emissive {
+            emit_color: Texture::SolidColor(light.color),
+            strength: default_light_strength,
+        });
+
+        materials.push(emissive_material.clone());
+
+        let light_sphere = HittableObject::Sphere(Sphere {
+            center: light.position,
+            radius: default_light_radius,
+            material: emissive_material,
+        });
+
+        objects.push(light_sphere);
+        lights.push(objects.len() - 1);
+    }
 
     let scene = Scene {
         camera,
         objects,
-        materials,
+        lights,
+        background_color: file_scene.background.color,
     };
     debug!("{:#?}", scene);
 

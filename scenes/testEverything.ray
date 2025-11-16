@@ -24,7 +24,7 @@ Lights {
 
 Materials {
 	Material {
-		textureFilename ../Project_3/Media/textures/waterlilies.jpg
+		textureFilename ../textures/waterlilies.jpg
 		diffuseColor 0.5 0.5 0.5
 		specularColor 0.5 0.5 0.5
 		reflectiveColor 0 0 0
@@ -42,7 +42,7 @@ Materials {
 		indexOfRefraction 0.6
 	}
 	Material {
-		textureFilename ../Project_3/Media/textures/check1024.jpg
+		textureFilename ../textures/check1024.jpg
 		diffuseColor 0.5 0.5 0.5
 		specularColor 0.5 0.5 0.5
 		reflectiveColor 0 0 0

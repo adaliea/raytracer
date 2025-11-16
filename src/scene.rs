@@ -1,17 +1,18 @@
+use glam::Vec3A;
 use crate::camera::Camera;
 use crate::hittable::{HitRecord, Hittable, HittableObject};
-use crate::material::Material;
 use crate::ray::Ray;
 
 #[derive(Debug, Clone)]
 pub struct Scene {
     pub camera: Camera,
-    pub materials: Vec<Material>,
     pub objects: Vec<HittableObject>,
+    pub lights: Vec<usize>,
+    pub background_color: Vec3A,
 }
 
 impl Hittable for Scene {
-    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>> {
         let mut closest_so_far = t_max;
         let mut hit_anything = None;
 

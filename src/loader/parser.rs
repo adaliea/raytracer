@@ -1,5 +1,5 @@
 use crate::loader::file_format::{Background, Camera, Light, Material, Object, Scene};
-use glam::Vec3A;
+use glam::{Vec2, Vec3A};
 use std::iter::Peekable;
 
 pub fn parse_ray_file(contents: &str) -> Scene {
@@ -214,12 +214,75 @@ fn parse_group<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<
                 tokens.next();
                 break;
             }
+            "Triangle" => {
+                tokens.next();
+                objects.push(parse_triangle(tokens));
+            }
             _ => {
                 tokens.next();
             }
         }
     }
     objects
+}
+
+fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item=&'a str>>) -> Object {
+    let mut material_index = 0;
+    let mut vertex0 = Vec3A::ZERO;
+    let mut vertex1 = Vec3A::ZERO;
+    let mut vertex2 = Vec3A::ZERO;
+    let mut tex_xy_0 = Vec2::ZERO;
+    let mut tex_xy_1 = Vec2::ZERO;
+    let mut tex_xy_2 = Vec2::ZERO;
+    expect_token(tokens, "{");
+    while let Some(token) = tokens.peek() {
+        match *token {
+            "materialIndex" => {
+                tokens.next();
+                material_index = parse_usize(tokens);
+            }
+            "vertex0" => {
+                tokens.next();
+                vertex0 = parse_vec3a(tokens);
+            }
+            "vertex1" => {
+                tokens.next();
+                vertex1 = parse_vec3a(tokens);
+            }
+            "vertex2" => {
+                tokens.next();
+                vertex2 = parse_vec3a(tokens);
+            }
+            "tex_xy_0" => {
+                tokens.next();
+                tex_xy_0 = parse_vec2(tokens);
+            }
+            "tex_xy_1" => {
+                tokens.next();
+                tex_xy_1 = parse_vec2(tokens);
+            }
+            "tex_xy_2" => {
+                tokens.next();
+                tex_xy_2 = parse_vec2(tokens);
+            }
+            "}" => {
+                tokens.next();
+                break;
+            }
+            _ => {
+                tokens.next();
+            }
+        }
+    }
+    Object::Triangle {
+        material_index,
+        vertex0,
+        vertex1,
+        vertex2,
+        tex_xy_0,
+        tex_xy_1,
+        tex_xy_2,
+    }
 }
 
 fn parse_sphere<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
@@ -262,6 +325,12 @@ fn parse_vec3a<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec3
     let y = parse_f32(tokens);
     let z = parse_f32(tokens);
     Vec3A::new(x, y, z)
+}
+
+fn parse_vec2<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec2 {
+    let x = parse_f32(tokens);
+    let y = parse_f32(tokens);
+    Vec2::new(x, y)
 }
 
 fn parse_f32<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> f32 {
