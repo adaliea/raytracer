@@ -1165,6 +1165,7 @@ name = "raytracer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "approx",
  "bvh",
  "clap",
  "color-backtrace",

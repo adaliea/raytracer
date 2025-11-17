@@ -85,11 +85,7 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
                     materials[0].clone()
                 };
 
-                HittableObject::Sphere(Sphere {
-                    center,
-                    radius,
-                    material,
-                })
+                HittableObject::Sphere(Sphere::new(center, radius, material))
             }
             file_format::Object::Triangle {
                 vertex0,
@@ -106,15 +102,9 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
                     materials[0].clone()
                 };
 
-                HittableObject::Triangle(Triangle {
-                    v0: vertex0,
-                    v1: vertex1,
-                    v2: vertex2,
-                    uv0: tex_xy_0,
-                    uv1: tex_xy_1,
-                    uv2: tex_xy_2,
-                    material,
-                })
+                HittableObject::Triangle(Triangle::new(
+                    vertex0, vertex1, vertex2, tex_xy_0, tex_xy_1, tex_xy_2, material,
+                ))
             }
         };
 
