@@ -1,42 +1,167 @@
-# author: Kyle
+# Author: Adalie
+# Enclosed in a box to make it easier for light to bounce
 
 Background {
-	# Color of the background 
-	color 0.15 0.15 0.25 # blue-gray
-	# low intensity white light
-	ambientLight 1 1 1 
+    # Color of the background (less important now)
+    color 0.15 0.15 0.25 
+    # Ambient light is ignored by our path tracer
+    ambientLight 1 1 1 
 }
 
 Camera {
-	eye 0 0 0
-	lookAt 10 0 0
-	up 0 0 1
-	fovy 45
+    eye 0 0 0
+    lookAt 10 0 0
+    up 0 0 1
+    fovy 45
 }
 
 Lights {
-	Light {
-		position 10 0 5
-		color 1 1 1
-	}
+    Light {
+       # Moved light to be above the sphere
+       position 10 0 8.9
+       color 1 1 1
+    }
 }
 
 Materials {
-	Material {
-		textureFilename NULL
-		diffuseColor 0.5 0 0
-		specularColor 0.3 0.3 0.3
-		reflectiveColor 0.3 0.3 0.3
-		shininess 50
-		transparentColor 0 0 0 
-		indexOfRefraction 0.6
-	}
+    # Material 0: Sphere
+    Material {
+       textureFilename NULL
+       diffuseColor 0.5 0.5 0.5
+       specularColor 0.3 0.3 0.3
+       reflectiveColor 0.0 0.0 0.0
+       shininess 50
+       transparentColor 0 0 0 
+       indexOfRefraction 0.0
+    }
+    # Material 1: White Walls
+    Material {
+           textureFilename NULL
+           diffuseColor 0.7 0.7 0.7
+           specularColor 0.3 0.3 0.3
+           reflectiveColor 0.0 0.0 0.0
+           shininess 50
+           transparentColor 0 0 0
+           indexOfRefraction 0.0
+    }
+    # Material 2: Red Wall (Left)
+    Material {
+           textureFilename NULL
+           diffuseColor 0.5 0.0 0.0
+           specularColor 0.3 0.3 0.3
+           reflectiveColor 0.0 0.0 0.0
+           shininess 50
+           transparentColor 0 0 0
+           indexOfRefraction 0.0
+    }
+    # Material 3: Green Wall (Right)
+    Material {
+           textureFilename NULL
+           diffuseColor 0.0 0.5 0.0
+           specularColor 0.3 0.3 0.3
+           reflectiveColor 0.0 0.0 0.0
+           shininess 50
+           transparentColor 0 0 0
+           indexOfRefraction 0.0
+    }
 }
 
 Group {
-	Sphere {
-		materialIndex 0
-		center 10 0 0
-		radius 2
-	}
+    # The sphere
+    Sphere {
+       materialIndex 0
+       center 10 0 0
+       radius 2
+    }
+
+    # --- The Box ---
+    # Box dimensions:
+    # x: -5 to 15
+    # y: -5 to 5
+    # z: -4 to 10
+
+    # Floor (z = -4), White (Mat 1)
+    Triangle {
+        vertex0 -5 -5 -4
+        vertex1 15 -5 -4
+        vertex2 15 5 -4
+        materialIndex 1
+    }
+    Triangle {
+        vertex0 -5 -5 -4
+        vertex1 15 5 -4
+        vertex2 -5 5 -4
+        materialIndex 1
+    }
+    
+    # Ceiling (z = 10), White (Mat 1)
+    Triangle {
+        vertex0 -5 -5 10
+        vertex1 15 5 10
+        vertex2 15 -5 10
+        materialIndex 1
+    }
+    Triangle {
+        vertex0 -5 -5 10
+        vertex1 -5 5 10
+        vertex2 15 5 10
+        materialIndex 1
+    }
+    
+    # Back Wall (x = 15), White (Mat 1)
+    Triangle {
+        vertex0 15 -5 -4
+        vertex1 15 -5 10
+        vertex2 15 5 10
+        materialIndex 1
+    }
+    Triangle {
+        vertex0 15 -5 -4
+        vertex1 15 5 10
+        vertex2 15 5 -4
+        materialIndex 1
+    }
+    
+    # Front Wall (x = -5), White (Mat 1)
+    # (Camera is at x=0, so this is behind it)
+    Triangle {
+        vertex0 -5 -5 -4
+        vertex1 -5 5 10
+        vertex2 -5 -5 10
+        materialIndex 1
+    }
+    Triangle {
+        vertex0 -5 -5 -4
+        vertex1 -5 5 -4
+        vertex2 -5 5 10
+        materialIndex 1
+    }
+    
+    # Left Wall (y = 5), Red (Mat 2)
+    Triangle {
+        vertex0 -5 5 -4
+        vertex1 15 5 -4
+        vertex2 15 5 10
+        materialIndex 2
+    }
+    Triangle {
+        vertex0 -5 5 -4
+        vertex1 15 5 10
+        vertex2 -5 5 10
+        materialIndex 2
+    }
+    
+    # Right Wall (y = -5), Green (Mat 3)
+    Triangle {
+        vertex0 -5 -5 -4
+        vertex1 15 -5 10
+        vertex2 15 -5 -4
+        materialIndex 3
+    }
+    Triangle {
+        vertex0 -5 -5 -4
+        vertex1 -5 -5 10
+        vertex2 15 -5 10
+        materialIndex 3
+    }
 }

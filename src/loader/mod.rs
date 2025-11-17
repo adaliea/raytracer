@@ -23,7 +23,6 @@ fn load_texture(texture_path: &str, scene_path: &str) -> Result<RgbImage, ImageE
 pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error> {
     let contents = fs::read_to_string(path)?;
     let file_scene = parser::parse_ray_file(&contents);
-    debug!("{:#?}", file_scene);
 
     let camera = Camera::new(
         file_scene.camera.eye,
@@ -111,8 +110,8 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
         objects.push(obj);
     }
 
-    let default_light_strength = 10.0;
-    let default_light_radius = 0.25;
+    let default_light_strength = 50.0;
+    let default_light_radius = 1.0;
     let mut lights: Vec<usize> = Vec::new();
 
     for light in file_scene.lights {
@@ -139,7 +138,6 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
         lights,
         background_color: file_scene.background.color,
     };
-    debug!("{:#?}", scene);
 
     Ok(scene)
 }

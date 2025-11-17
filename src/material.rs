@@ -1,4 +1,4 @@
-use glam::Vec3A;
+use glam::{Vec2, Vec3A};
 use image::RgbImage;
 
 #[derive(Debug, PartialEq)]
@@ -42,4 +42,24 @@ pub enum Material {
 pub enum Texture {
     Image(RgbImage),
     SolidColor(Vec3A),
+}
+
+impl Texture {
+    #[inline(always)]
+    pub fn sample(&self, uv: Vec2) -> Vec3A {
+        match self {
+            Texture::Image(image) => {
+                let rgb = image.get_pixel(
+                    (uv.x * image.width() as f32) as u32,
+                    (uv.y * image.height() as f32) as u32,
+                );
+                Vec3A::new(
+                    rgb[0] as f32 / 255.0,
+                    rgb[1] as f32 / 255.0,
+                    rgb[2] as f32 / 255.0,
+                )
+            }
+            Texture::SolidColor(color) => color.clone(),
+        }
+    }
 }
