@@ -50,8 +50,6 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
             } => emit_color.sample(rec.uv) * strength,
 
             Material::Lambertian { albedo } => {
-                let attenuation = albedo.sample(rec.uv);
-
                 let mut scatter_direction = rec.normal + random_in_unit_sphere().normalize();
 
                 // Catch degenerate scatter direction
@@ -65,7 +63,6 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
             }
 
             Material::Metallic { albedo, fuzz } => {
-                let attenuation = albedo.sample(rec.uv);
                 let reflected_direction = reflect(r.direction.normalize(), rec.normal);
 
                 // Add "fuzz" by adding a small random vector
@@ -85,7 +82,6 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                 index_of_refraction,
                 fuzz,
             } => {
-                let attenuation = Vec3A::ONE; // Dielectrics are clear, they don't tint
                 let refraction_ratio = if rec.front_face {
                     1.0 / index_of_refraction // Ray is entering the object
                 } else {
