@@ -5,7 +5,7 @@ use crate::scene::Scene;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use rand::Rng;
-use std::cmp::max;
+use std::f32::consts::PI;
 
 #[inline(always)]
 pub fn ray_color(
@@ -47,7 +47,7 @@ pub fn ray_color(
                     }
                 }
 
-                let mut scatter_direction = rec.normal + random_in_unit_sphere().normalize();
+                let mut scatter_direction = rec.normal + random_on_unit_sphere();
                 if scatter_direction.length_squared() < 1e-8 {
                     scatter_direction = rec.normal;
                 }
@@ -98,8 +98,11 @@ pub fn ray_color(
                 let scatter_direction = if cannot_refract || reflectance > rand::random::<f32>() {
                     reflect(unit_direction, rec.normal)
                 } else {
-                    refract(unit_direction, rec.normal, refraction_ratio)
-                    // TODO: Add fuzz here
+                    refract(
+                        unit_direction,
+                        rec.normal + random_on_unit_sphere() * fuzz,
+                        refraction_ratio,
+                    )
                 };
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
@@ -116,7 +119,7 @@ pub fn ray_color(
 fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Vec3A {
     let mut total_direct_light = Vec3A::ZERO;
 
-    let num_shadow_samples = 1; // higher = slower, but better quality
+    let num_shadow_samples = 2; // higher = slower, but better quality
     let total_samples = (world.lights.len() * num_shadow_samples) as f32;
 
     if total_samples == 0.0 {
@@ -144,7 +147,7 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
             // Cast multiple shadow rays for soft shadows
             for _ in 0..num_shadow_samples {
                 // Pick a random point on the light sphere on the side facing the hit point
-                let rand_dir = random_in_unit_sphere().normalize();
+                let rand_dir = random_on_unit_sphere();
                 let light_point = light_sphere.center + rand_dir * light_sphere.radius;
 
                 let shadow_dir = light_point - rec.p;
@@ -159,15 +162,12 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
                     .map(|r| r.bh_object_index == light_sphere.bh_node_index())
                     .unwrap_or(true)
                 {
-                    // It's not blocked! Add its contribution.
-                    // This is a simplified "BRDF * Light * cos(theta)"
                     let cos_theta = rec.normal.dot(shadow_dir.normalize()).max(0.0);
 
-                    // We also need the (1/dist^2) falloff
+                    // (1/dist^2) falloff
                     let dist_sq = shadow_dist * shadow_dist;
 
-                    // The full term: (albedo * light * cos_theta) / dist^2
-                    // We'll use the 'attenuation' (which is the albedo)
+                    // (albedo * light * cos_theta) / dist^2
                     light_contribution += (attenuation * emitted_light * cos_theta) / dist_sq;
                 }
             }
@@ -183,16 +183,35 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
 #[inline(always)]
 fn random_in_unit_sphere() -> Vec3A {
     let mut rng = rand::rng();
-    loop {
-        let p = Vec3A::new(
-            rng.random_range(-1.0..1.0),
-            rng.random_range(-1.0..1.0),
-            rng.random_range(-1.0..1.0),
-        );
-        if p.length_squared() < 1.0 {
-            return p;
-        }
-    }
+    let theta = rng.random_range(-PI / 2.0..PI / 2.0);
+    let phi = rng.random_range(0.0..2.0 * PI);
+    let r = rng.random_range(0.0..1.0);
+
+    let cos_theta = theta.cos();
+    let sin_theta = theta.sin();
+    let cos_phi = phi.cos();
+    let sin_phi = phi.sin();
+
+    Vec3A::new(
+        r * cos_phi * sin_theta,
+        r * sin_phi * sin_theta,
+        r * cos_theta,
+    )
+}
+
+/// Generates a random 3D on a unit sphere
+#[inline(always)]
+fn random_on_unit_sphere() -> Vec3A {
+    let mut rng = rand::rng();
+    let theta = rng.random_range(-PI / 2.0..PI / 2.0);
+    let phi = rng.random_range(0.0..2.0 * PI);
+
+    let cos_theta = theta.cos();
+    let sin_theta = theta.sin();
+    let cos_phi = phi.cos();
+    let sin_phi = phi.sin();
+
+    Vec3A::new(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta)
 }
 
 /// Reflects an incoming vector `v` off a surface with normal `n`
