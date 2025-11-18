@@ -6,7 +6,7 @@ use glam::Vec3A;
 use rand::Rng;
 use std::cmp::max;
 
-#[inline]
+#[inline(always)]
 pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A {
     if depth <= 0 {
         return Vec3A::ZERO;
@@ -116,7 +116,7 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
 }
 
 /// Generates a random 3D vector inside a unit sphere
-#[inline]
+#[inline(always)]
 fn random_in_unit_sphere() -> Vec3A {
     let mut rng = rand::rng();
     loop {
@@ -132,14 +132,14 @@ fn random_in_unit_sphere() -> Vec3A {
 }
 
 /// Reflects an incoming vector `v` off a surface with normal `n`
-#[inline]
+#[inline(always)]
 fn reflect(v: Vec3A, n: Vec3A) -> Vec3A {
     v - 2.0 * v.dot(n) * n
 }
 
 /// Refracts an incoming vector `uv` (unit vector) at a surface `n`
 /// with a refraction ratio `etai_over_etat`
-#[inline]
+#[inline(always)]
 fn refract(uv: Vec3A, n: Vec3A, etai_over_etat: f32) -> Vec3A {
     let cos_theta = (-uv).dot(n).min(1.0);
     let r_out_perp = etai_over_etat * (uv + cos_theta * n);
@@ -148,7 +148,7 @@ fn refract(uv: Vec3A, n: Vec3A, etai_over_etat: f32) -> Vec3A {
 }
 
 /// Schlick's approximation for reflectance
-#[inline]
+#[inline(always)]
 fn schlick(cosine: f32, ref_ratio: f32) -> f32 {
     let r0 = (1.0 - ref_ratio) / (1.0 + ref_ratio);
     let r0 = r0 * r0;

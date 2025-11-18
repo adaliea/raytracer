@@ -1,0 +1,152 @@
+use crate::hittable::{HitRecord, Hittable};
+use crate::material::Material;
+use crate::ray::Ray;
+use bvh::aabb::{Aabb, Bounded};
+use bvh::bounding_hierarchy::BHShape;
+use glam::{Vec2, Vec3A};
+use nalgebra::{Point3, Vector3};
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
+pub struct Triangle {
+    v0: Vec3A,
+    material: Arc<Material>,
+    uv0: Vec2,
+    uv1: Vec2,
+    uv2: Vec2,
+    v0v1: Vec3A,
+    v0v2: Vec3A,
+    normal: Vec3A,
+    d: f32,
+    dot00: f32,
+    dot01: f32,
+    dot11: f32,
+    inv_denom: f32,
+    node_index: usize,
+}
+
+impl Triangle {
+    pub fn new(
+        v0: Vec3A,
+        v1: Vec3A,
+        v2: Vec3A,
+        uv0: Vec2,
+        uv1: Vec2,
+        uv2: Vec2,
+        material: Arc<Material>,
+    ) -> Self {
+        let v0v1 = v1 - v0;
+        let v0v2 = v2 - v0;
+        let normal = v0v1.cross(v0v2).normalize();
+        let d = -normal.dot(v0);
+
+        let dot00 = v0v1.dot(v0v1);
+        let dot01 = v0v1.dot(v0v2);
+        let dot11 = v0v2.dot(v0v2);
+        let denom = dot00 * dot11 - dot01 * dot01;
+        let inv_denom = if denom.abs() < 1e-6 { 0.0 } else { 1.0 / denom };
+
+        Self {
+            v0,
+            uv0,
+            uv1,
+            uv2,
+            material,
+            v0v1,
+            v0v2,
+            normal,
+            d,
+            dot00,
+            dot01,
+            dot11,
+            inv_denom,
+            node_index: 0,
+        }
+    }
+}
+
+impl Hittable for Triangle {
+    #[inline(always)]
+    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>> {
+        // Find Plane Intersection
+        let dot_normal_dir = self.normal.dot(r.direction);
+        if approx::abs_diff_eq!(dot_normal_dir, 0.0) {
+            return None;
+        }
+        let t = -(self.normal.dot(r.origin) + self.d) / dot_normal_dir;
+        if (t < t_min) || (t > t_max) {
+            return None;
+        }
+        let p = r.at(t);
+
+        // Check if Point is Inside
+        if self.inv_denom == 0.0 {
+            return None;
+        } // Degenerate triangle
+
+        let v0p = p - self.v0;
+        let dot02 = v0p.dot(self.v0v1);
+        let dot12 = v0p.dot(self.v0v2);
+
+        // Calculate barycentric coordinates u and v
+        let u = (self.dot11 * dot02 - self.dot01 * dot12) * self.inv_denom;
+        let v = (self.dot00 * dot12 - self.dot01 * dot02) * self.inv_denom;
+
+        // Check if the point is inside the triangle
+        if (u < 0.0) || (v < 0.0) || (u + v > 1.0) {
+            return None;
+        }
+
+        // valid hit
+        let uv = self.uv0 * (1.0 - u - v) + self.uv1 * u + self.uv2 * v;
+        let mut rec = HitRecord {
+            t,
+            p,
+            normal: Vec3A::ZERO,
+            front_face: false,
+            material: &self.material,
+            uv,
+        };
+        rec.set_face_normal(r, self.normal);
+
+        Some(rec)
+    }
+}
+
+impl Bounded<f32, 3> for Triangle {
+    fn aabb(&self) -> Aabb<f32, 3> {
+        let mut min = Point3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
+        let mut max = Point3::new(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY);
+
+        for v in vec![self.v0, self.v0 + self.v0v1, self.v0 + self.v0v2] {
+            if v.x < min.x {
+                min.x = v.x
+            }
+            if v.y < min.y {
+                min.y = v.y
+            }
+            if v.z < min.z {
+                min.z = v.z
+            }
+            if v.x > max.x {
+                max.x = v.x
+            }
+            if v.y > max.y {
+                max.y = v.y
+            }
+            if v.z > max.z {
+                max.z = v.z
+            }
+        }
+        Aabb::with_bounds(min, max)
+    }
+}
+
+impl BHShape<f32, 3> for Triangle {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}

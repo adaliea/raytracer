@@ -2,9 +2,13 @@ mod file_format;
 mod parser;
 
 use crate::camera::Camera;
-use crate::hittable::{HittableObject, Sphere, Triangle};
+use crate::hittable::HittableObject;
+use crate::hittable::sphere::Sphere;
+use crate::hittable::triangle::Triangle;
 use crate::material::{Material, Texture};
 use crate::scene::Scene;
+use bvh::bounding_hierarchy::BoundingHierarchy;
+use bvh::bvh::Bvh;
 use glam::Vec3A;
 use image::{ImageError, RgbImage};
 use log::{debug, warn};
@@ -122,22 +126,27 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
 
         materials.push(emissive_material.clone());
 
-        let light_sphere = HittableObject::Sphere(Sphere {
-            center: light.position,
-            radius: default_light_radius,
-            material: emissive_material,
-        });
+        let light_sphere = HittableObject::Sphere(Sphere::new(
+            light.position,
+            default_light_radius,
+            emissive_material,
+        ));
 
         objects.push(light_sphere);
         lights.push(objects.len() - 1);
     }
 
+    let bvh = Bvh::build_par(&mut objects);
+
     let scene = Scene {
         camera,
         objects,
         lights,
+        bvh,
         background_color: file_scene.background.color,
     };
+
+    debug!("Loaded scene: {:?}", scene);
 
     Ok(scene)
 }

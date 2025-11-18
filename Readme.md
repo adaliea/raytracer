@@ -21,6 +21,6 @@ cargo run --release -- --help
 
 ### Running built binary
 
-Located in `target/release/raytracer`
+Located in `target/release/raytracer` or `target/x86_64-pc-windows-gnu/release/raytracer.exe'
 
 Use `--help` to see the help menu.

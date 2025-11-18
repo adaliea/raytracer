@@ -1,0 +1,79 @@
+use crate::material::Material;
+use crate::ray::Ray;
+use bvh::aabb::Bounded;
+use bvh::bounding_hierarchy::BHShape;
+use glam::{Vec2, Vec3A};
+use sphere::Sphere;
+use triangle::Triangle;
+
+pub mod sphere;
+pub mod triangle;
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct HitRecord<'a> {
+    /// Point Ray intersected
+    pub p: Vec3A,
+    pub normal: Vec3A,
+    /// Distance Ray traveled
+    pub t: f32,
+    pub front_face: bool,
+    pub material: &'a Material,
+    pub uv: Vec2,
+}
+
+impl HitRecord<'_> {
+    #[inline(always)]
+    pub fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3A) {
+        self.front_face = r.direction.dot(outward_normal) < 0.0;
+        self.normal = if self.front_face {
+            outward_normal
+        } else {
+            -outward_normal
+        };
+    }
+}
+
+pub trait Hittable: Send + Sync {
+    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>>;
+}
+
+#[derive(Debug, Clone)]
+pub enum HittableObject {
+    Sphere(Sphere),
+    Triangle(Triangle),
+}
+
+impl Hittable for HittableObject {
+    #[inline(always)]
+    fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>> {
+        match self {
+            HittableObject::Sphere(s) => s.hit(r, t_min, t_max),
+            HittableObject::Triangle(t) => t.hit(r, t_min, t_max),
+        }
+    }
+}
+
+impl Bounded<f32, 3> for HittableObject {
+    fn aabb(&self) -> bvh::aabb::Aabb<f32, 3> {
+        match self {
+            HittableObject::Sphere(s) => s.aabb(),
+            HittableObject::Triangle(t) => t.aabb(),
+        }
+    }
+}
+
+impl BHShape<f32, 3> for HittableObject {
+    fn set_bh_node_index(&mut self, index: usize) {
+        match self {
+            HittableObject::Sphere(s) => s.set_bh_node_index(index),
+            HittableObject::Triangle(t) => t.set_bh_node_index(index),
+        }
+    }
+    fn bh_node_index(&self) -> usize {
+        match self {
+            HittableObject::Sphere(s) => s.bh_node_index(),
+            HittableObject::Triangle(t) => t.bh_node_index(),
+        }
+    }
+}
