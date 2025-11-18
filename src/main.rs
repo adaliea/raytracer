@@ -80,36 +80,33 @@ fn main() {
 
     // parallelizes per image row
     buffer
-        .enumerate_rows_mut()
+        .enumerate_pixels_mut()
         .par_bridge()
-        .for_each(|(_, row)| {
-            for (_, (x, y, pixel)) in row.enumerate() {
-                let mut color = Vec3A::ZERO;
-                for _ in 0..samples_per_pixel {
-                    let u =
-                        (x as f32 + rand::rng().random::<f32>() - 0.5) / (image_width - 1) as f32;
-                    let v = ((image_height - y - 1) as f32 + rand::rng().random::<f32>() - 0.5)
-                        / (image_height - 1) as f32;
+        .for_each(|(x, y, pixel)| {
+            let mut color = Vec3A::ZERO;
+            for _ in 0..samples_per_pixel {
+                let u = (x as f32 + rand::rng().random::<f32>() - 0.5) / (image_width - 1) as f32;
+                let v = ((image_height - y - 1) as f32 + rand::rng().random::<f32>() - 0.5)
+                    / (image_height - 1) as f32;
 
-                    let r = scene.camera.get_ray(u, v);
+                let r = scene.camera.get_ray(u, v);
 
-                    color += ray_color(&r, &scene, args.max_bounces, args.max_bounces);
-                }
-                color /= samples_per_pixel as f32;
-
-                // Basic tone mapping
-                color = color / (color + Vec3A::splat(1.0));
-
-                // Gamma correction
-                color = color.powf(1.0 / 2.2);
-
-                *pixel = Rgb([
-                    (color.x.clamp(0.0, 0.999) * 256.0) as u8,
-                    (color.y.clamp(0.0, 0.999) * 256.0) as u8,
-                    (color.z.clamp(0.0, 0.999) * 256.0) as u8,
-                ]);
-                bar.inc(1);
+                color += ray_color(&r, &scene, args.max_bounces, args.max_bounces);
             }
+            color /= samples_per_pixel as f32;
+
+            // Basic tone mapping
+            color = color / (color + Vec3A::splat(1.0));
+
+            // Gamma correction
+            color = color.powf(1.0 / 2.2);
+
+            *pixel = Rgb([
+                (color.x.clamp(0.0, 0.999) * 256.0) as u8,
+                (color.y.clamp(0.0, 0.999) * 256.0) as u8,
+                (color.z.clamp(0.0, 0.999) * 256.0) as u8,
+            ]);
+            bar.inc(1);
         });
 
     bar.finish();
