@@ -20,6 +20,7 @@ pub struct HitRecord<'a> {
     pub front_face: bool,
     pub material: &'a Material,
     pub uv: Vec2,
+    pub bh_object_index: usize,
 }
 
 impl HitRecord<'_> {

@@ -68,6 +68,7 @@ impl Hittable for Sphere {
             front_face: false,   // Placeholder
             material: &self.material,
             uv,
+            bh_object_index: self.node_index,
         };
         rec.set_face_normal(r, outward_normal);
 

@@ -2,12 +2,19 @@ use crate::hittable::{HitRecord, Hittable, HittableObject};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::scene::Scene;
+use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use rand::Rng;
 use std::cmp::max;
 
 #[inline(always)]
-pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A {
+pub fn ray_color(
+    r: &Ray,
+    world: &Scene,
+    depth: u32,
+    max_bounces: u32,
+    is_specular_ray: bool,
+) -> Vec3A {
     if depth <= 0 {
         return Vec3A::ZERO;
     }
@@ -19,13 +26,14 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                 strength,
             } => {
                 let emit = emit_color.sample(rec.uv) * *strength;
-                return if depth == max_bounces {
+                return if depth == max_bounces || is_specular_ray {
                     emit // It's a camera ray, return the light
                 } else {
                     Vec3A::ZERO // It's an indirect bounce, don't double-count.
                 };
             }
 
+            // TODO create a combined model for metallic and lambertian
             Material::Lambertian { albedo } => {
                 let attenuation = albedo.sample(rec.uv);
 
@@ -47,13 +55,12 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
 
                 // Calculate indirect light
                 let indirect_light = (attenuation
-                    * ray_color(&scattered_ray, world, depth - 1, max_bounces))
+                    * ray_color(&scattered_ray, world, depth - 1, max_bounces, false))
                     / probability;
 
                 direct_light + indirect_light
             }
 
-            // --- 4. Metallic (Unchanged, but RR logic applied) ---
             Material::Metallic { albedo, fuzz } => {
                 // RR check for specular bounces
                 let attenuation = albedo.sample(rec.uv);
@@ -63,7 +70,7 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                     Ray::new(rec.p, reflected_direction + fuzz * random_in_unit_sphere());
 
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
-                    (attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces))
+                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true)
                 } else {
                     Vec3A::ZERO
                 }
@@ -89,7 +96,6 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                 let reflectance = schlick(cos_theta, refraction_ratio);
 
                 let scatter_direction = if cannot_refract || reflectance > rand::random::<f32>() {
-                    // <-- Use standard rand::random
                     reflect(unit_direction, rec.normal)
                 } else {
                     refract(unit_direction, rec.normal, refraction_ratio)
@@ -97,8 +103,7 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                 };
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
-                // No RR, so no boost
-                attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces)
+                attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true)
             }
         };
     }
@@ -111,7 +116,7 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
 fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Vec3A {
     let mut total_direct_light = Vec3A::ZERO;
 
-    let num_shadow_samples = 2; // higher = slower, but better quality (1 = sharp, 4+ = soft)
+    let num_shadow_samples = 1; // higher = slower, but better quality
     let total_samples = (world.lights.len() * num_shadow_samples) as f32;
 
     if total_samples == 0.0 {
@@ -138,7 +143,7 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
 
             // Cast multiple shadow rays for soft shadows
             for _ in 0..num_shadow_samples {
-                // Pick a random point on the sphere's surface
+                // Pick a random point on the light sphere on the side facing the hit point
                 let rand_dir = random_in_unit_sphere().normalize();
                 let light_point = light_sphere.center + rand_dir * light_sphere.radius;
 
@@ -148,9 +153,12 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
 
                 // Check if the ray is occluded
                 // Check up to `shadow_dist - 0.001` to avoid hitting the light itself
-                let is_occluded = world.hit(&shadow_ray, 0.001, shadow_dist - 0.001).is_some();
+                let shadow_ray_rec = world.hit(&shadow_ray, 0.001, shadow_dist - 0.001);
 
-                if !is_occluded {
+                if shadow_ray_rec
+                    .map(|r| r.bh_object_index == light_sphere.bh_node_index())
+                    .unwrap_or(true)
+                {
                     // It's not blocked! Add its contribution.
                     // This is a simplified "BRDF * Light * cos(theta)"
                     let cos_theta = rec.normal.dot(shadow_dir.normalize()).max(0.0);

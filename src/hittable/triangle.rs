@@ -106,6 +106,7 @@ impl Hittable for Triangle {
             front_face: false,
             material: &self.material,
             uv,
+            bh_object_index: self.node_index,
         };
         rec.set_face_normal(r, self.normal);
 

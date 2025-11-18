@@ -91,7 +91,7 @@ fn main() {
 
                 let r = scene.camera.get_ray(u, v);
 
-                color += ray_color(&r, &scene, args.max_bounces, args.max_bounces);
+                color += ray_color(&r, &scene, args.max_bounces, args.max_bounces, true);
             }
             color /= samples_per_pixel as f32;
 
