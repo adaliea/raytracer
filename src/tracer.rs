@@ -1,8 +1,8 @@
-use crate::hittable::Hittable;
+use crate::hittable::{HitRecord, Hittable, HittableObject};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::scene::Scene;
-use glam::Vec3A;
+use glam::{Vec2, Vec3A};
 use rand::Rng;
 use std::cmp::max;
 
@@ -18,7 +18,13 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
             strength,
         } = rec.material
         {
-            return emit_color.sample(rec.uv) * *strength;
+            let emit = emit_color.sample(rec.uv) * *strength;
+            return if depth == max_bounces {
+                emit // It's a camera ray, return the light
+            } else {
+                Vec3A::ZERO // It's an indirect bounce, don't double-count.
+                // We'll capture this light source in our NEE step
+            };
         }
 
         // Kill rays that are low in energy
@@ -49,7 +55,9 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                 strength,
             } => emit_color.sample(rec.uv) * strength,
 
-            Material::Lambertian { albedo } => {
+            Material::Lambertian { .. } => {
+                let direct_light = sample_direct_light(world, &rec, attenuation);
+
                 let mut scatter_direction = rec.normal + random_in_unit_sphere().normalize();
 
                 // Catch degenerate scatter direction
@@ -59,10 +67,13 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
 
-                attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces) / probability
+                let indirect_light =
+                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces);
+
+                (direct_light + indirect_light) / probability
             }
 
-            Material::Metallic { albedo, fuzz } => {
+            Material::Metallic { fuzz, .. } => {
                 let reflected_direction = reflect(r.direction.normalize(), rec.normal);
 
                 // Add "fuzz" by adding a small random vector
@@ -113,6 +124,70 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
     }
 
     world.background_color
+}
+
+/// Samples all lights for a given hit point (NEE)
+fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Vec3A {
+    let mut total_direct_light = Vec3A::ZERO;
+
+    let num_shadow_samples = 2; // higher = slower, but better quality (1 = sharp, 4+ = soft)
+    let total_samples = (world.lights.len() * num_shadow_samples) as f32;
+
+    if total_samples == 0.0 {
+        return Vec3A::ZERO;
+    }
+
+    for light_index in &world.lights {
+        let light_obj = &world.objects[*light_index];
+
+        if let HittableObject::Sphere(light_sphere) = light_obj {
+            // Get the light's emission
+            let (light_emit, light_strength) = match &*light_sphere.material {
+                Material::Emissive {
+                    emit_color,
+                    strength,
+                } => {
+                    (emit_color.sample(Vec2::ZERO), *strength) // UVs don't matter for solid color
+                }
+                _ => continue, // Not an emissive material
+            };
+            let emitted_light = light_emit * light_strength;
+
+            let mut light_contribution = Vec3A::ZERO;
+
+            // Cast multiple shadow rays for soft shadows
+            for _ in 0..num_shadow_samples {
+                // Pick a random point on the sphere's surface
+                let rand_dir = random_in_unit_sphere().normalize();
+                let light_point = light_sphere.center + rand_dir * light_sphere.radius;
+
+                let shadow_dir = light_point - rec.p;
+                let shadow_dist = shadow_dir.length();
+                let shadow_ray = Ray::new(rec.p, shadow_dir);
+
+                // Check if the ray is occluded
+                // Check up to `shadow_dist - 0.001` to avoid hitting the light itself
+                let is_occluded = world.hit(&shadow_ray, 0.001, shadow_dist - 0.001).is_some();
+
+                if !is_occluded {
+                    // It's not blocked! Add its contribution.
+                    // This is a simplified "BRDF * Light * cos(theta)"
+                    let cos_theta = rec.normal.dot(shadow_dir.normalize()).max(0.0);
+
+                    // We also need the (1/dist^2) falloff
+                    let dist_sq = shadow_dist * shadow_dist;
+
+                    // The full term: (albedo * light * cos_theta) / dist^2
+                    // We'll use the 'attenuation' (which is the albedo)
+                    light_contribution += (attenuation * emitted_light * cos_theta) / dist_sq;
+                }
+            }
+
+            total_direct_light += light_contribution / num_shadow_samples as f32;
+        }
+    }
+
+    total_direct_light
 }
 
 /// Generates a random 3D vector inside a unit sphere

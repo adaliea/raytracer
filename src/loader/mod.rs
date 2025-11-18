@@ -146,7 +146,7 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
         background_color: file_scene.background.color,
     };
 
-    debug!("Loaded scene: {:?}", scene);
+    //debug!("Loaded scene: {:?}", scene);
 
     Ok(scene)
 }

@@ -13,7 +13,7 @@ use glam::Vec3A;
 use image::{ImageBuffer, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
 use log::info;
-use rand::{Rng, rng};
+use rand::Rng;
 use rayon::prelude::*;
 use std::fs::create_dir;
 use std::path::Path;
