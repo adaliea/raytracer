@@ -13,77 +13,57 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
     }
 
     if let Some(rec) = world.hit(r, 0.001, f32::INFINITY) {
-        if let Material::Emissive {
-            emit_color,
-            strength,
-        } = rec.material
-        {
-            let emit = emit_color.sample(rec.uv) * *strength;
-            return if depth == max_bounces {
-                emit // It's a camera ray, return the light
-            } else {
-                Vec3A::ZERO // It's an indirect bounce, don't double-count.
-                // We'll capture this light source in our NEE step
-            };
-        }
-
-        // Kill rays that are low in energy
-        let attenuation = match rec.material {
-            Material::Lambertian { albedo } => albedo.sample(rec.uv),
-            Material::Metallic { albedo, .. } => albedo.sample(rec.uv),
-            Material::Dielectric { .. } => Vec3A::ONE,
-            Material::Emissive { .. } => Vec3A::ZERO,
-        };
-
-        // Pick our probability (P)
-        let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
-
-        // play RR with the rays
-        // kill the ray if the probability is less than P
-        // we compensate for this by increasing the contribution of the rays that don't die
-        // to keep the energy of the scene constant
-        if depth < (max_bounces - 5) {
-            if rand::random::<f32>() > probability {
-                return Vec3A::ZERO; // Terminate this path
-            }
-        }
-
         return match rec.material {
-            // light
             Material::Emissive {
                 emit_color,
                 strength,
-            } => emit_color.sample(rec.uv) * strength,
+            } => {
+                let emit = emit_color.sample(rec.uv) * *strength;
+                return if depth == max_bounces {
+                    emit // It's a camera ray, return the light
+                } else {
+                    Vec3A::ZERO // It's an indirect bounce, don't double-count.
+                };
+            }
 
-            Material::Lambertian { .. } => {
+            Material::Lambertian { albedo } => {
+                let attenuation = albedo.sample(rec.uv);
+
                 let direct_light = sample_direct_light(world, &rec, attenuation);
 
-                let mut scatter_direction = rec.normal + random_in_unit_sphere().normalize();
+                // rr to for GI bounces
+                let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
+                if depth < (max_bounces - 5) {
+                    if rand::random::<f32>() > probability {
+                        return direct_light;
+                    }
+                }
 
-                // Catch degenerate scatter direction
+                let mut scatter_direction = rec.normal + random_in_unit_sphere().normalize();
                 if scatter_direction.length_squared() < 1e-8 {
                     scatter_direction = rec.normal;
                 }
-
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
 
-                let indirect_light =
-                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces);
+                // Calculate indirect light
+                let indirect_light = (attenuation
+                    * ray_color(&scattered_ray, world, depth - 1, max_bounces))
+                    / probability;
 
-                (direct_light + indirect_light) / probability
+                direct_light + indirect_light
             }
 
-            Material::Metallic { fuzz, .. } => {
-                let reflected_direction = reflect(r.direction.normalize(), rec.normal);
+            // --- 4. Metallic (Unchanged, but RR logic applied) ---
+            Material::Metallic { albedo, fuzz } => {
+                // RR check for specular bounces
+                let attenuation = albedo.sample(rec.uv);
 
-                // Add "fuzz" by adding a small random vector
+                let reflected_direction = reflect(r.direction.normalize(), rec.normal);
                 let scattered_ray =
                     Ray::new(rec.p, reflected_direction + fuzz * random_in_unit_sphere());
 
-                // Only scatter if the reflection is away from the surface
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
-                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces)
-                        / probability
+                    (attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces))
                 } else {
                     Vec3A::ZERO
                 }
@@ -93,31 +73,31 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
                 index_of_refraction,
                 fuzz,
             } => {
+                let attenuation = Vec3A::ONE;
+
                 let refraction_ratio = if rec.front_face {
-                    1.0 / index_of_refraction // Ray is entering the object
+                    1.0 / index_of_refraction
                 } else {
-                    *index_of_refraction // Ray is exiting the object
+                    *index_of_refraction
                 };
 
                 let unit_direction = r.direction.normalize();
-
-                // Check for Total Internal Reflection
                 let cos_theta = (-unit_direction).dot(rec.normal).min(1.0);
                 let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
                 let cannot_refract = refraction_ratio * sin_theta > 1.0;
 
                 let reflectance = schlick(cos_theta, refraction_ratio);
 
-                let scatter_direction =
-                    if cannot_refract || reflectance > rand::rng().random::<f32>() {
-                        // Must reflect
-                        reflect(unit_direction, rec.normal)
-                    } else {
-                        // Can refract
-                        refract(unit_direction, rec.normal, refraction_ratio)
-                    };
+                let scatter_direction = if cannot_refract || reflectance > rand::random::<f32>() {
+                    // <-- Use standard rand::random
+                    reflect(unit_direction, rec.normal)
+                } else {
+                    refract(unit_direction, rec.normal, refraction_ratio)
+                    // TODO: Add fuzz here
+                };
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
+                // No RR, so no boost
                 attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces)
             }
         };
@@ -127,6 +107,7 @@ pub fn ray_color(r: &Ray, world: &Scene, depth: u32, max_bounces: u32) -> Vec3A 
 }
 
 /// Samples all lights for a given hit point (NEE)
+#[inline(always)]
 fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Vec3A {
     let mut total_direct_light = Vec3A::ZERO;
 
