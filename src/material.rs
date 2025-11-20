@@ -1,5 +1,6 @@
 use glam::{Vec2, Vec3A};
 use image::RgbImage;
+use crate::hittable::LazyUv;
 
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]
@@ -46,9 +47,11 @@ pub enum Texture {
 
 impl Texture {
     #[inline(always)]
-    pub fn sample(&self, uv: Vec2) -> Vec3A {
+    pub fn sample(&self, uv: &LazyUv) -> Vec3A {
         match self {
             Texture::Image(image) => {
+                let uv = uv.get_uv();
+                
                 let rgb = image.get_pixel(
                     (uv.x * image.width() as f32) as u32,
                     (uv.y * image.height() as f32) as u32,

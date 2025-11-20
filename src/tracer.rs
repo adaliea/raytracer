@@ -1,4 +1,4 @@
-use crate::hittable::{HitRecord, Hittable, HittableObject};
+use crate::hittable::{HitRecord, Hittable, HittableObject, LazyUv};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::scene::Scene;
@@ -25,7 +25,7 @@ pub fn ray_color(
                 emit_color,
                 strength,
             } => {
-                let emit = emit_color.sample(rec.uv) * *strength;
+                let emit = emit_color.sample(&rec.uv) * *strength;
                 return if depth == max_bounces || is_specular_ray {
                     emit // It's a camera ray, return the light
                 } else {
@@ -35,7 +35,7 @@ pub fn ray_color(
 
             // TODO create a combined model for metallic and lambertian
             Material::Lambertian { albedo } => {
-                let attenuation = albedo.sample(rec.uv);
+                let attenuation = albedo.sample(&rec.uv);
 
                 let direct_light = sample_direct_light(world, &rec, attenuation);
 
@@ -63,7 +63,7 @@ pub fn ray_color(
 
             Material::Metallic { albedo, fuzz } => {
                 // RR check for specular bounces
-                let attenuation = albedo.sample(rec.uv);
+                let attenuation = albedo.sample(&rec.uv);
 
                 let reflected_direction = reflect(r.direction.normalize(), rec.normal);
                 let scattered_ray =
@@ -136,7 +136,7 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
                     emit_color,
                     strength,
                 } => {
-                    (emit_color.sample(Vec2::ZERO), *strength) // UVs don't matter for solid color
+                    (emit_color.sample(&LazyUv::Uv(Vec2::ZERO)), *strength) // UVs don't matter for solid color
                 }
                 _ => continue, // Not an emissive material
             };
@@ -151,12 +151,12 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
                 let light_point = light_sphere.center + rand_dir * light_sphere.radius;
 
                 let shadow_dir = light_point - rec.p;
-                let shadow_dist = shadow_dir.length();
+                let shadow_dist_2 = shadow_dir.length_squared();
                 let shadow_ray = Ray::new(rec.p, shadow_dir);
 
                 // Check if the ray is occluded
                 // Check up to `shadow_dist - 0.001` to avoid hitting the light itself
-                let shadow_ray_rec = world.hit(&shadow_ray, 0.001, shadow_dist - 0.001);
+                let shadow_ray_rec = world.hit(&shadow_ray, 0.001, f32::INFINITY);
 
                 if shadow_ray_rec
                     .map(|r| r.bh_object_index == light_sphere.bh_node_index())
@@ -165,10 +165,9 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
                     let cos_theta = rec.normal.dot(shadow_dir.normalize()).max(0.0);
 
                     // (1/dist^2) falloff
-                    let dist_sq = shadow_dist * shadow_dist;
 
                     // (albedo * light * cos_theta) / dist^2
-                    light_contribution += (attenuation * emitted_light * cos_theta) / dist_sq;
+                    light_contribution += (attenuation * emitted_light * cos_theta) / shadow_dist_2;
                 }
             }
 

@@ -1,15 +1,15 @@
+use crate::hittable::sphere::Sphere;
+use std::fmt::{Debug};
 use crate::material::Material;
 use crate::ray::Ray;
 use bvh::aabb::Bounded;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
-use sphere::Sphere;
 use triangle::Triangle;
 
 pub mod sphere;
 pub mod triangle;
 
-#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct HitRecord<'a> {
     /// Point Ray intersected
@@ -19,8 +19,27 @@ pub struct HitRecord<'a> {
     pub t: f32,
     pub front_face: bool,
     pub material: &'a Material,
-    pub uv: Vec2,
+    pub uv: LazyUv,
     pub bh_object_index: usize,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum LazyUv {
+    Uv(Vec2),
+    LazySphere {
+        outward_normal: Vec3A,
+    }
+}
+
+impl LazyUv {
+    pub fn get_uv(&self) -> Vec2 {
+        match self {
+            LazyUv::Uv(uv) => {*uv}
+            LazyUv::LazySphere { outward_normal } => {
+                sphere::calc_uv(outward_normal)
+            }
+        }
+    }
 }
 
 impl HitRecord<'_> {

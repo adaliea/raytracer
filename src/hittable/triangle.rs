@@ -3,9 +3,10 @@ use crate::material::Material;
 use crate::ray::Ray;
 use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
-use glam::{Vec2, Vec3A};
+use glam::{U16Vec2, Vec2, Vec3A};
 use nalgebra::{Point3, Vector3};
 use std::sync::Arc;
+use crate::hittable::LazyUv::Uv;
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
@@ -70,7 +71,7 @@ impl Hittable for Triangle {
     fn hit(&'_ self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>> {
         // Find Plane Intersection
         let dot_normal_dir = self.normal.dot(r.direction);
-        if approx::abs_diff_eq!(dot_normal_dir, 0.0) {
+        if dot_normal_dir == 0.0 {
             return None;
         }
         let t = -(self.normal.dot(r.origin) + self.d) / dot_normal_dir;
@@ -98,14 +99,16 @@ impl Hittable for Triangle {
         }
 
         // valid hit
+        
         let uv = self.uv0 * (1.0 - u - v) + self.uv1 * u + self.uv2 * v;
+        
         let mut rec = HitRecord {
             t,
             p,
             normal: Vec3A::ZERO,
             front_face: false,
             material: &self.material,
-            uv,
+            uv: Uv(uv),
             bh_object_index: self.node_index,
         };
         rec.set_face_normal(r, self.normal);
