@@ -83,15 +83,16 @@ fn main() {
         .enumerate_pixels_mut()
         .par_bridge()
         .for_each(|(x, y, pixel)| {
+            let mut rng = rand::rng();
             let mut color = Vec3A::ZERO;
             for _ in 0..samples_per_pixel {
-                let u = (x as f32 + rand::rng().random::<f32>() - 0.5) / (image_width - 1) as f32;
-                let v = ((image_height - y - 1) as f32 + rand::rng().random::<f32>() - 0.5)
+                let u = (x as f32 + rng.random::<f32>() - 0.5) / (image_width - 1) as f32;
+                let v = ((image_height - y - 1) as f32 + rng.random::<f32>() - 0.5)
                     / (image_height - 1) as f32;
 
                 let r = scene.camera.get_ray(u, v);
 
-                color += ray_color(&r, &scene, args.max_bounces, args.max_bounces, true);
+                color += ray_color(&r, &scene, args.max_bounces, args.max_bounces, true, &mut rng);
             }
             color /= samples_per_pixel as f32;
 

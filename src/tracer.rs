@@ -4,7 +4,7 @@ use crate::ray::Ray;
 use crate::scene::Scene;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
-use rand::Rng;
+use rand::{Rng};
 use std::f32::consts::PI;
 
 #[inline(always)]
@@ -14,6 +14,7 @@ pub fn ray_color(
     depth: u32,
     max_bounces: u32,
     is_specular_ray: bool,
+    rng: &mut impl Rng,
 ) -> Vec3A {
     if depth <= 0 {
         return Vec3A::ZERO;
@@ -37,7 +38,7 @@ pub fn ray_color(
             Material::Lambertian { albedo } => {
                 let attenuation = albedo.sample(&rec.uv);
 
-                let direct_light = sample_direct_light(world, &rec, attenuation);
+                let direct_light = sample_direct_light(world, &rec, attenuation, rng);
 
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
@@ -47,15 +48,13 @@ pub fn ray_color(
                     }
                 }
 
-                let mut scatter_direction = rec.normal + random_on_unit_sphere();
-                if scatter_direction.length_squared() < 1e-8 {
-                    scatter_direction = rec.normal;
-                }
+                let scatter_direction = rec.normal + random_on_unit_sphere(rng);
+
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
 
                 // Calculate indirect light
                 let indirect_light = (attenuation
-                    * ray_color(&scattered_ray, world, depth - 1, max_bounces, false))
+                    * ray_color(&scattered_ray, world, depth - 1, max_bounces, false, rng))
                     / probability;
 
                 direct_light + indirect_light
@@ -67,10 +66,10 @@ pub fn ray_color(
 
                 let reflected_direction = reflect(r.direction.normalize(), rec.normal);
                 let scattered_ray =
-                    Ray::new(rec.p, reflected_direction + fuzz * random_in_unit_sphere());
+                    Ray::new(rec.p, reflected_direction + fuzz * random_in_unit_sphere(rng));
 
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
-                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true)
+                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng)
                 } else {
                     Vec3A::ZERO
                 }
@@ -100,13 +99,13 @@ pub fn ray_color(
                 } else {
                     refract(
                         unit_direction,
-                        rec.normal + random_on_unit_sphere() * fuzz,
+                        rec.normal + random_on_unit_sphere(rng) * fuzz,
                         refraction_ratio,
                     )
                 };
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
-                attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true)
+                attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng)
             }
         };
     }
@@ -116,7 +115,7 @@ pub fn ray_color(
 
 /// Samples all lights for a given hit point (NEE)
 #[inline(always)]
-fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Vec3A {
+fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A, rng: &mut impl Rng) -> Vec3A {
     let mut total_direct_light = Vec3A::ZERO;
 
     let num_shadow_samples = 2; // higher = slower, but better quality
@@ -147,7 +146,7 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
             // Cast multiple shadow rays for soft shadows
             for _ in 0..num_shadow_samples {
                 // Pick a random point on the light sphere on the side facing the hit point
-                let rand_dir = random_on_unit_sphere();
+                let rand_dir = random_on_unit_sphere(rng);
                 let light_point = light_sphere.center + rand_dir * light_sphere.radius;
 
                 let shadow_dir = light_point - rec.p;
@@ -178,39 +177,40 @@ fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A) -> Ve
     total_direct_light
 }
 
-/// Generates a random 3D vector inside a unit sphere
+/// Generates a random 3D vector uniformly INSIDE a unit sphere.
 #[inline(always)]
-fn random_in_unit_sphere() -> Vec3A {
-    let mut rng = rand::rng();
-    let theta = rng.random_range(-PI / 2.0..PI / 2.0);
-    let phi = rng.random_range(0.0..2.0 * PI);
-    let r = rng.random_range(0.0..1.0);
+fn random_in_unit_sphere(rng: &mut impl Rng) -> Vec3A {
+    loop {
+        // Generate a vector in the cube [-1, 1]
+        let v = Vec3A::new(
+            rng.random_range(-1.0..1.0),
+            rng.random_range(-1.0..1.0),
+            rng.random_range(-1.0..1.0),
+        );
 
-    let cos_theta = theta.cos();
-    let sin_theta = theta.sin();
-    let cos_phi = phi.cos();
-    let sin_phi = phi.sin();
-
-    Vec3A::new(
-        r * cos_phi * sin_theta,
-        r * sin_phi * sin_theta,
-        r * cos_theta,
-    )
+        // If it is inside the sphere, return it.
+        if v.length_squared() < 1.0 {
+            return v;
+        }
+    }
 }
 
-/// Generates a random 3D on a unit sphere
+/// Generates a random 3D vector uniformly ON a unit sphere surface.
 #[inline(always)]
-fn random_on_unit_sphere() -> Vec3A {
-    let mut rng = rand::rng();
-    let theta = rng.random_range(-PI / 2.0..PI / 2.0);
-    let phi = rng.random_range(0.0..2.0 * PI);
+fn random_on_unit_sphere(rng: &mut impl Rng) -> Vec3A {
+    loop {
+        let v = Vec3A::new(
+            rng.random_range(-1.0..1.0),
+            rng.random_range(-1.0..1.0),
+            rng.random_range(-1.0..1.0),
+        );
 
-    let cos_theta = theta.cos();
-    let sin_theta = theta.sin();
-    let cos_phi = phi.cos();
-    let sin_phi = phi.sin();
-
-    Vec3A::new(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta)
+        let len_sq = v.length_squared();
+        // Reject outside sphere, and reject very small vectors (to avoid NaN on normalize)
+        if len_sq > 0.0 && len_sq < 1.0 {
+            return v.normalize(); // Project the point onto the surface
+        }
+    }
 }
 
 /// Reflects an incoming vector `v` off a surface with normal `n`
