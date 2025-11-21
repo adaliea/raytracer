@@ -3,8 +3,8 @@ use crate::material::Material;
 use crate::ray::Ray;
 use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
-use glam::{U16Vec2, Vec2, Vec3A};
-use nalgebra::{Point3, Vector3};
+use glam::{Vec2, Vec3A};
+use nalgebra::Point3;
 use std::sync::Arc;
 use crate::hittable::LazyUv::Uv;
 
@@ -122,7 +122,7 @@ impl Bounded<f32, 3> for Triangle {
         let mut min = Point3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
         let mut max = Point3::new(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY);
 
-        for v in vec![self.v0, self.v0 + self.v0v1, self.v0 + self.v0v2] {
+        for v in [self.v0, self.v0 + self.v0v1, self.v0 + self.v0v2] {
             if v.x < min.x {
                 min.x = v.x
             }

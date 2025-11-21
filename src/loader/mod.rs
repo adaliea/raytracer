@@ -11,8 +11,9 @@ use bvh::bounding_hierarchy::BoundingHierarchy;
 use bvh::bvh::Bvh;
 use glam::Vec3A;
 use image::{ImageError, RgbImage};
-use log::{debug, warn};
+use log::warn;
 use std::fs;
+use std::io::Error;
 use std::sync::Arc;
 
 fn load_texture(texture_path: &str, scene_path: &str) -> Result<RgbImage, ImageError> {
@@ -24,7 +25,7 @@ fn load_texture(texture_path: &str, scene_path: &str) -> Result<RgbImage, ImageE
     img.map(|i| i.to_rgb8())
 }
 
-pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error> {
+pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, Error> {
     let contents = fs::read_to_string(path)?;
     let file_scene = parser::parse_ray_file(&contents);
 
@@ -40,7 +41,7 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
     let mut objects: Vec<HittableObject> = Vec::new();
 
     for mat in file_scene.materials {
-        let fuzz = (1.0 - (mat.shininess / 100.0)).max(0.0).min(1.0);
+        let fuzz = (1.0 - (mat.shininess / 100.0)).clamp(0.0, 1.0);
 
         let material = if mat.transparent_color.length() > 0.0 {
             Material::Dielectric {
@@ -57,7 +58,7 @@ pub fn load_scene(path: &str, aspect_ratio: f32) -> Result<Scene, std::io::Error
             let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
                 Texture::Image(
                     load_texture(&filename, path)
-                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?,
+                        .map_err(Error::other)?,
                 )
             } else {
                 Texture::SolidColor(mat.diffuse_color)

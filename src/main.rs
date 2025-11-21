@@ -61,7 +61,7 @@ fn main() {
 
     // Scene
     let scene = loader::load_scene(&args.scene_path, aspect_ratio)
-        .expect(&format!("Failed to load scene from {}", args.scene_path));
+        .unwrap_or_else(|_| panic!("Failed to load scene from {}", args.scene_path));
     info!("Loaded scene with {} objects", scene.objects.len());
 
     // Progress bar
@@ -116,10 +116,7 @@ fn main() {
     let filename = path.file_stem().unwrap().to_str().unwrap();
     let dir = Path::new("output");
     if !dir.exists() || !dir.is_dir() {
-        create_dir(dir).expect(&format!(
-            "Failed to create output directory {}",
-            dir.display()
-        ));
+        create_dir(dir).unwrap_or_else(|_| panic!("Failed to create output directory {}", dir.display()))
     }
     // Save image
     buffer.save(format!("output/{}.png", filename)).unwrap();

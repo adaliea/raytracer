@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3A};
+use glam::Vec3A;
 use image::RgbImage;
 use crate::hittable::LazyUv;
 
@@ -62,7 +62,7 @@ impl Texture {
                     rgb[2] as f32 / 255.0,
                 )
             }
-            Texture::SolidColor(color) => color.clone(),
+            Texture::SolidColor(color) => *color,
         }
     }
 }

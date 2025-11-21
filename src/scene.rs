@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::hittable::{HitRecord, Hittable, HittableObject};
 use crate::ray::Ray;
+use nalgebra::{Point3, Vector3};
 use bvh::bvh::Bvh;
 use glam::Vec3A;
 
@@ -23,7 +24,6 @@ impl Hittable for Scene {
         //     Point3::new(r.origin.x, r.origin.y, r.origin.z),
         //     Vector3::new(r.direction.x, r.direction.y, r.direction.z),
         // );
-        //
         // let hit_objs = self.bvh.traverse(&bvh_ray, &self.objects);
         for object in &self.objects {
             if let Some(rec) = object.hit(r, t_min, closest_so_far) {

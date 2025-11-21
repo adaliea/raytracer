@@ -5,7 +5,7 @@ use crate::scene::Scene;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use rand::{Rng};
-use std::f32::consts::PI;
+use rand_distr::{Distribution, UnitSphere};
 
 #[inline(always)]
 pub fn ray_color(
@@ -16,7 +16,7 @@ pub fn ray_color(
     is_specular_ray: bool,
     rng: &mut impl Rng,
 ) -> Vec3A {
-    if depth <= 0 {
+    if depth == 0 {
         return Vec3A::ZERO;
     }
 
@@ -42,10 +42,8 @@ pub fn ray_color(
 
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
-                if depth < (max_bounces - 5) {
-                    if rand::random::<f32>() > probability {
+                if depth < (max_bounces - 5) && rand::random::<f32>() > probability {
                         return direct_light;
-                    }
                 }
 
                 let scatter_direction = rec.normal + random_on_unit_sphere(rng);
@@ -198,19 +196,8 @@ fn random_in_unit_sphere(rng: &mut impl Rng) -> Vec3A {
 /// Generates a random 3D vector uniformly ON a unit sphere surface.
 #[inline(always)]
 fn random_on_unit_sphere(rng: &mut impl Rng) -> Vec3A {
-    loop {
-        let v = Vec3A::new(
-            rng.random_range(-1.0..1.0),
-            rng.random_range(-1.0..1.0),
-            rng.random_range(-1.0..1.0),
-        );
-
-        let len_sq = v.length_squared();
-        // Reject outside sphere, and reject very small vectors (to avoid NaN on normalize)
-        if len_sq > 0.0 && len_sq < 1.0 {
-            return v.normalize(); // Project the point onto the surface
-        }
-    }
+    let [x, y, z]: [f32; 3] = UnitSphere.sample(rng);
+    Vec3A::new(x, y, z)
 }
 
 /// Reflects an incoming vector `v` off a surface with normal `n`
