@@ -46,7 +46,7 @@ pub enum Object {
         tex_xy_1: Vec2,
         tex_xy_2: Vec2,
         material_index: usize,
-    }
+    },
 }
 
 #[derive(Debug, Default)]

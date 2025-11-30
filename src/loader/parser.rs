@@ -226,7 +226,7 @@ fn parse_group<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<
     objects
 }
 
-fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item=&'a str>>) -> Object {
+fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
     let mut material_index = 0;
     let mut vertex0 = Vec3A::ZERO;
     let mut vertex1 = Vec3A::ZERO;

@@ -1,9 +1,9 @@
 use crate::camera::Camera;
 use crate::hittable::{HitRecord, Hittable, HittableObject};
 use crate::ray::Ray;
-use nalgebra::{Point3, Vector3};
 use bvh::bvh::Bvh;
 use glam::Vec3A;
+use nalgebra::{Point3, Vector3};
 
 #[derive(Debug, Clone)]
 pub struct Scene {

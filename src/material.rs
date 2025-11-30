@@ -1,6 +1,6 @@
+use crate::hittable::LazyUv;
 use glam::Vec3A;
 use image::RgbImage;
-use crate::hittable::LazyUv;
 
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]
@@ -51,10 +51,10 @@ impl Texture {
         match self {
             Texture::Image(image) => {
                 let uv = uv.get_uv();
-                
+
                 let rgb = image.get_pixel(
-                    (uv.x * image.width() as f32) as u32,
-                    (uv.y * image.height() as f32) as u32,
+                    (uv.x * (image.width() - 1) as f32) as u32,
+                    (uv.y * (image.height() - 1) as f32) as u32,
                 );
                 Vec3A::new(
                     rgb[0] as f32 / 255.0,

@@ -1,3 +1,4 @@
+use crate::hittable::LazyUv::LazySphere;
 use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
@@ -7,7 +8,6 @@ use glam::{Vec2, Vec3A};
 use nalgebra::{Point3, Vector3};
 use std::f32::consts::PI;
 use std::sync::Arc;
-use crate::hittable::LazyUv::LazySphere;
 
 #[derive(Debug, Clone)]
 pub struct Sphere {
@@ -64,14 +64,14 @@ impl Hittable for Sphere {
         let t = root;
         let p = r.at(t);
         let outward_normal = (p - self.center) / self.radius;
-        
+
         let mut rec = HitRecord {
             t,
             p,
             normal: Vec3A::ZERO, // Placeholder
             front_face: false,   // Placeholder
             material: &self.material,
-            uv: LazySphere {outward_normal},
+            uv: LazySphere { outward_normal },
             bh_object_index: self.node_index,
         };
         rec.set_face_normal(r, outward_normal);

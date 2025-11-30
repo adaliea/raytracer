@@ -7,27 +7,42 @@ mod ray;
 mod scene;
 mod tracer;
 
-use std::error::Error;
-use std::fs::create_dir;
-use std::path::Path;
+use crate::scene::Scene;
+use crate::tracer::ray_color;
 use glam::Vec3A;
 use image::{ImageBuffer, ImageResult, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
 use log::info;
 use rand::Rng;
 use rayon::prelude::*;
-use crate::scene::Scene;
-use crate::tracer::ray_color;
+use std::error::Error;
+use std::fs::create_dir;
+use std::path::Path;
+
+#[derive(Debug, Copy, Clone)]
 
 pub struct RenderParameters {
-    image_width: u32, image_height: u32, samples_per_pixel: u32, max_bounces: u32, aspect_ratio: f32
+    image_width: u32,
+    image_height: u32,
+    samples_per_pixel: u32,
+    max_bounces: u32,
+    aspect_ratio: f32,
 }
 
 impl RenderParameters {
-    pub fn new(image_width: u32, image_height: u32, samples_per_pixel: u32, max_bounces: u32) -> Self {
+    pub fn new(
+        image_width: u32,
+        image_height: u32,
+        samples_per_pixel: u32,
+        max_bounces: u32,
+    ) -> Self {
         let aspect_ratio = image_width as f32 / image_height as f32;
         Self {
-            image_width, image_height, samples_per_pixel, max_bounces, aspect_ratio
+            image_width,
+            image_height,
+            samples_per_pixel,
+            max_bounces,
+            aspect_ratio,
         }
     }
 }
@@ -35,7 +50,10 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
     // Image
     let aspect_ratio = params.image_width as f32 / params.image_height as f32;
 
-    info!("Rendering image {}x{}...", params.image_width, params.image_height);
+    info!(
+        "Rendering image {}x{}...",
+        params.image_width, params.image_height
+    );
 
     // Progress bar
     let bar = ProgressBar::new(params.image_height as u64 * params.image_width as u64);
@@ -49,7 +67,8 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
     );
 
     // Render
-    let mut buffer: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(params.image_width, params.image_height);
+    let mut buffer: ImageBuffer<Rgb<u8>, Vec<u8>> =
+        ImageBuffer::new(params.image_width, params.image_height);
 
     // parallelizes per image row
     buffer
@@ -65,7 +84,14 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
 
                 let r = scene.camera.get_ray(u, v);
 
-                color += ray_color(&r, &scene, params.max_bounces, params.max_bounces, true, &mut rng);
+                color += ray_color(
+                    &r,
+                    &scene,
+                    params.max_bounces,
+                    params.max_bounces,
+                    true,
+                    &mut rng,
+                );
             }
             color /= params.samples_per_pixel as f32;
 
@@ -87,24 +113,20 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
     buffer
 }
 
-
 pub fn save_buffer(buffer: ImageBuffer<Rgb<u8>, Vec<u8>>, scene_path: &Path) -> ImageResult<()> {
     let path = Path::new(scene_path);
     let filename = path.file_stem().unwrap().to_str().unwrap();
     let dir = Path::new("output");
     if !dir.exists() || !dir.is_dir() {
-        create_dir(dir).unwrap_or_else(|_| panic!("Failed to create output directory {}", dir.display()))
+        create_dir(dir)
+            .unwrap_or_else(|_| panic!("Failed to create output directory {}", dir.display()))
     }
     // Save image
     buffer.save(format!("output/{}.png", filename))
 }
 
-
 pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error>> {
-    info!(
-        "Loading scene from {:?}",
-        path
-    );
+    info!("Loading scene from {:?}", path);
 
     // Scene
     let scene = loader::load_scene(path, aspect_ratio)?;
@@ -114,7 +136,6 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
 
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
     let scene = load_scene(path, params.aspect_ratio)?;
-    info!("Loaded scene with {} objects", scene.objects.len());
     let rendered = render(params, scene);
     save_buffer(rendered, path).map_err(Box::from)
 }

@@ -1,3 +1,4 @@
+use crate::hittable::LazyUv::Uv;
 use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
@@ -6,7 +7,6 @@ use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use nalgebra::Point3;
 use std::sync::Arc;
-use crate::hittable::LazyUv::Uv;
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
@@ -99,9 +99,9 @@ impl Hittable for Triangle {
         }
 
         // valid hit
-        
+
         let uv = self.uv0 * (1.0 - u - v) + self.uv1 * u + self.uv2 * v;
-        
+
         let mut rec = HitRecord {
             t,
             p,

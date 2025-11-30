@@ -1,7 +1,6 @@
 mod file_format;
 mod parser;
 
-use std::error::Error;
 use crate::camera::Camera;
 use crate::hittable::HittableObject;
 use crate::hittable::sphere::Sphere;
@@ -12,16 +11,14 @@ use bvh::bounding_hierarchy::BoundingHierarchy;
 use bvh::bvh::Bvh;
 use glam::Vec3A;
 use image::{ImageError, RgbImage};
-use log::warn;
+use log::{error, warn};
+use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 fn load_texture(texture_path: &Path, scene_path: &Path) -> Result<RgbImage, ImageError> {
-    let texture_path = scene_path
-        .parent()
-        .unwrap()
-        .join(texture_path);
+    let texture_path = scene_path.parent().unwrap().join(texture_path);
     let img = image::open(&texture_path);
     img.map(|i| i.to_rgb8())
 }
@@ -57,8 +54,17 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
         } else {
             // Check for texture
             let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
-                Texture::Image(
-                    load_texture(&Path::new(&filename), path)?,
+                load_texture(&Path::new(&filename), path).map_or_else(
+                    |error| {
+                        error!(
+                            "Failed to load texture {} in {}; reason: {}",
+                            filename,
+                            path.display(),
+                            error
+                        );
+                        Texture::SolidColor(mat.diffuse_color)
+                    },
+                    Texture::Image,
                 )
             } else {
                 Texture::SolidColor(mat.diffuse_color)

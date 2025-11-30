@@ -4,7 +4,7 @@ use crate::ray::Ray;
 use crate::scene::Scene;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
-use rand::{Rng};
+use rand::Rng;
 use rand_distr::{Distribution, UnitSphere};
 
 #[inline(always)]
@@ -43,7 +43,7 @@ pub fn ray_color(
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
                 if depth < (max_bounces - 5) && rand::random::<f32>() > probability {
-                        return direct_light;
+                    return direct_light;
                 }
 
                 let scatter_direction = rec.normal + random_on_unit_sphere(rng);
@@ -63,11 +63,14 @@ pub fn ray_color(
                 let attenuation = albedo.sample(&rec.uv);
 
                 let reflected_direction = reflect(r.direction.normalize(), rec.normal);
-                let scattered_ray =
-                    Ray::new(rec.p, reflected_direction + fuzz * random_in_unit_sphere(rng));
+                let scattered_ray = Ray::new(
+                    rec.p,
+                    reflected_direction + fuzz * random_in_unit_sphere(rng),
+                );
 
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
-                    attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng)
+                    attenuation
+                        * ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng)
                 } else {
                     Vec3A::ZERO
                 }
@@ -113,7 +116,12 @@ pub fn ray_color(
 
 /// Samples all lights for a given hit point (NEE)
 #[inline(always)]
-fn sample_direct_light(world: &Scene, rec: &HitRecord, attenuation: Vec3A, rng: &mut impl Rng) -> Vec3A {
+fn sample_direct_light(
+    world: &Scene,
+    rec: &HitRecord,
+    attenuation: Vec3A,
+    rng: &mut impl Rng,
+) -> Vec3A {
     let mut total_direct_light = Vec3A::ZERO;
 
     let num_shadow_samples = 2; // higher = slower, but better quality

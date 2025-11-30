@@ -1,10 +1,10 @@
 use crate::hittable::sphere::Sphere;
-use std::fmt::{Debug};
 use crate::material::Material;
 use crate::ray::Ray;
 use bvh::aabb::Bounded;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
+use std::fmt::Debug;
 use triangle::Triangle;
 
 pub mod sphere;
@@ -26,18 +26,14 @@ pub struct HitRecord<'a> {
 #[derive(Debug, Copy, Clone)]
 pub enum LazyUv {
     Uv(Vec2),
-    LazySphere {
-        outward_normal: Vec3A,
-    }
+    LazySphere { outward_normal: Vec3A },
 }
 
 impl LazyUv {
     pub fn get_uv(&self) -> Vec2 {
         match self {
-            LazyUv::Uv(uv) => {*uv}
-            LazyUv::LazySphere { outward_normal } => {
-                sphere::calc_uv(outward_normal)
-            }
+            LazyUv::Uv(uv) => *uv,
+            LazyUv::LazySphere { outward_normal } => sphere::calc_uv(outward_normal),
         }
     }
 }
