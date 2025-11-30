@@ -70,7 +70,7 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
         } else {
             // Check for texture
             let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
-                load_texture(&Path::new(&filename), path).map_or_else(
+                load_texture(Path::new(&filename), path).map_or_else(
                     |error| {
                         error!(
                             "Failed to load texture {} in {}; reason: {}",

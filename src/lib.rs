@@ -18,6 +18,8 @@ use rayon::prelude::*;
 use std::error::Error;
 use std::fs::create_dir;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
 
 #[derive(Debug, Copy, Clone)]
 
@@ -48,8 +50,7 @@ impl RenderParameters {
 }
 pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     // Image
-    let aspect_ratio = params.image_width as f32 / params.image_height as f32;
-
+    let time = Instant::now();
     info!(
         "Rendering image {}x{}...",
         params.image_width, params.image_height
@@ -70,6 +71,7 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
     let mut buffer: ImageBuffer<Rgb<u8>, Vec<u8>> =
         ImageBuffer::new(params.image_width, params.image_height);
 
+    let total_rays = AtomicU64::new(0);
     // parallelizes per image row
     buffer
         .enumerate_pixels_mut()
@@ -77,6 +79,7 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
         .for_each(|(x, y, pixel)| {
             let mut rng = rand::rng();
             let mut color = Vec3A::ZERO;
+            let mut rays = 0;
             for _ in 0..params.samples_per_pixel {
                 let u = (x as f32 + rng.random::<f32>() - 0.5) / (params.image_width - 1) as f32;
                 let v = ((params.image_height - y - 1) as f32 + rng.random::<f32>() - 0.5)
@@ -84,7 +87,7 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
 
                 let r = scene.camera.get_ray(u, v);
 
-                color += ray_color(
+                let trace = ray_color(
                     &r,
                     &scene,
                     params.max_bounces,
@@ -92,6 +95,8 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
                     true,
                     &mut rng,
                 );
+                color += trace.color;
+                rays += trace.rays;
             }
             color /= params.samples_per_pixel as f32;
 
@@ -107,9 +112,14 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
                 (color.z.clamp(0.0, 0.999) * 256.0) as u8,
             ]);
             bar.inc(1);
+            total_rays.fetch_add(rays, Ordering::Release);
         });
 
     bar.finish();
+    let elapsed = time.elapsed();
+    let num_pixels = params.image_width as u64 * params.image_height as u64;
+    let rays = total_rays.load(Ordering::Acquire);
+    info!("Rendering finished. Traced {} rays in {} seconds. {} rays/pixels, {} rays/s", rays, &elapsed.as_secs(), rays / num_pixels, rays / elapsed.as_secs());
     buffer
 }
 

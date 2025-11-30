@@ -7,6 +7,11 @@ use glam::{Vec2, Vec3A};
 use rand::Rng;
 use rand_distr::{Distribution, UnitSphere};
 
+pub struct TraceResult {
+    pub color: Vec3A,
+    /// How many ray intersection tests occurred
+    pub rays: u64,
+}
 #[inline(always)]
 pub fn ray_color(
     r: &Ray,
@@ -15,9 +20,9 @@ pub fn ray_color(
     max_bounces: u32,
     is_specular_ray: bool,
     rng: &mut impl Rng,
-) -> Vec3A {
+) -> TraceResult {
     if depth == 0 {
-        return Vec3A::ZERO;
+        return TraceResult {color: Vec3A::ZERO, rays: 0 };
     }
 
     if let Some(rec) = world.hit(r, 0.001, f32::INFINITY) {
@@ -28,9 +33,9 @@ pub fn ray_color(
             } => {
                 let emit = emit_color.sample(&rec.uv) * *strength;
                 return if depth == max_bounces || is_specular_ray {
-                    emit // It's a camera ray, return the light
+                    TraceResult {color: emit, rays: 1 } // It's a camera ray, return the light
                 } else {
-                    Vec3A::ZERO // It's an indirect bounce, don't double-count.
+                    TraceResult {color: Vec3A::ZERO, rays: 1 } // It's an indirect bounce, don't double-count.
                 };
             }
 
@@ -38,24 +43,25 @@ pub fn ray_color(
             Material::Lambertian { albedo } => {
                 let attenuation = albedo.sample(&rec.uv);
 
-                let direct_light = sample_direct_light(world, &rec, attenuation, rng);
+                let direct_trace = sample_direct_light(world, &rec, attenuation, rng);
 
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
                 if depth < (max_bounces - 5) && rand::random::<f32>() > probability {
-                    return direct_light;
+                    return direct_trace;
                 }
 
                 let scatter_direction = rec.normal + random_on_unit_sphere(rng);
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
 
+                let indirect_trace = ray_color(&scattered_ray, world, depth - 1, max_bounces, false, rng);
                 // Calculate indirect light
                 let indirect_light = (attenuation
-                    * ray_color(&scattered_ray, world, depth - 1, max_bounces, false, rng))
+                    * indirect_trace.color)
                     / probability;
 
-                direct_light + indirect_light
+                TraceResult {color: direct_trace.color + indirect_light, rays: indirect_trace.rays + direct_trace.rays + 1}
             }
 
             Material::Metallic { albedo, fuzz } => {
@@ -68,11 +74,11 @@ pub fn ray_color(
                     reflected_direction + fuzz * random_in_unit_sphere(rng),
                 );
 
+                let reflected_trace = ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
-                    attenuation
-                        * ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng)
+                    TraceResult {color: attenuation * reflected_trace.color, rays: reflected_trace.rays + 1 }
                 } else {
-                    Vec3A::ZERO
+                    TraceResult {color: Vec3A::ZERO, rays: reflected_trace.rays + 1 }
                 }
             }
 
@@ -106,12 +112,13 @@ pub fn ray_color(
                 };
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
-                attenuation * ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng)
+                let scattered_trace = ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
+                TraceResult {color: attenuation * scattered_trace.color, rays: scattered_trace.rays + 1  }
             }
         };
     }
 
-    world.background_color
+    TraceResult {color: world.background_color, rays: 1}
 }
 
 /// Samples all lights for a given hit point (NEE)
@@ -121,14 +128,14 @@ fn sample_direct_light(
     rec: &HitRecord,
     attenuation: Vec3A,
     rng: &mut impl Rng,
-) -> Vec3A {
+) -> TraceResult {
     let mut total_direct_light = Vec3A::ZERO;
 
     let num_shadow_samples = 2; // higher = slower, but better quality
-    let total_samples = (world.lights.len() * num_shadow_samples) as f32;
+    let total_samples = world.lights.len() * num_shadow_samples;
 
-    if total_samples == 0.0 {
-        return Vec3A::ZERO;
+    if total_samples == 0 {
+        return TraceResult {color: Vec3A::ZERO , rays: 0};
     }
 
     for light_index in &world.lights {
@@ -180,7 +187,7 @@ fn sample_direct_light(
         }
     }
 
-    total_direct_light
+    TraceResult {color: total_direct_light, rays: total_samples as u64 }
 }
 
 /// Generates a random 3D vector uniformly INSIDE a unit sphere.

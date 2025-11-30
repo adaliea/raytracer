@@ -3,7 +3,6 @@ use crate::hittable::{HitRecord, Hittable, HittableObject};
 use crate::ray::Ray;
 use bvh::bvh::Bvh;
 use glam::Vec3A;
-use nalgebra::{Point3, Vector3};
 
 #[derive(Debug, Clone)]
 pub struct Scene {
