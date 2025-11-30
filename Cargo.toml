@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0"
 env_logger = "0.11"
-glam = { version = "0.30.9", features = ["rand", "zerocopy", "approx", "fast-math"] }
+glam = { version = "0.30.9", features = ["rand", "zerocopy", "approx", "fast-math", "serde"] }
 
 image = "0.25.9"
 indicatif = { version = "0.18.3", features = ["improved_unicode"] }
@@ -19,6 +19,10 @@ approx = "0.5.1"
 rand = "0.9.2"
 nalgebra = "0.34.1"
 rand_distr = "0.5.1"
+serde = { version = "1.0.228", features = ["derive"] }
+ron = "0.12.0"
+serde_with = "3.16.1"
+oidn = "2.3.3"
 
 [profile.dev]
 opt-level = 3 # no lto optimizations but still max compiler opts

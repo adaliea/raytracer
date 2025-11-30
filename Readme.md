@@ -9,6 +9,12 @@ this project.
 
 ### Running (cargo)
 
+#### Install dependencies
+
+We need to install `open image denoise` for image processing.
+
+https://github.com/RenderKit/oidn/releases/download/v2.3.3/oidn-2.3.3.x86_64.linux.tar.gz`
+
 ```
 cargo run --release
 ```
