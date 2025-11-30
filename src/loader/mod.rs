@@ -17,6 +17,20 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+
+fn warn_out_of_range(range: (f32, f32), value: f32, name: &str) -> f32 {
+    if value > range.1 {
+        warn!("{} is out of range; expected <= {}; got {}", name, range.1, value);
+        range.1
+    } else if value < range.0 {
+        warn!("{} is out of range; expected >= {}; got {}", name, range.0, value);
+        range.0
+    } else {
+        value
+    }
+
+}
+
 fn load_texture(texture_path: &Path, scene_path: &Path) -> Result<RgbImage, ImageError> {
     let texture_path = scene_path.parent().unwrap().join(texture_path);
     let img = image::open(&texture_path);
@@ -39,7 +53,9 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
     let mut objects: Vec<HittableObject> = Vec::new();
 
     for mat in file_scene.materials {
-        let fuzz = (1.0 - (mat.shininess / 100.0)).clamp(0.0, 1.0);
+        let fuzz = 1.0 - (
+            warn_out_of_range((0.0, 100.0), mat.shininess, "shininess") / 100.0);
+
 
         let material = if mat.transparent_color.length() > 0.0 {
             Material::Dielectric {

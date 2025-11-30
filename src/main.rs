@@ -1,6 +1,5 @@
 use clap::Parser;
 use env_logger::Env;
-use nalgebra::SimdBool;
 use raytracer::{RenderParameters, load_and_save_scene};
 use std::error::Error;
 use std::path::Path;

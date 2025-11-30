@@ -4,7 +4,7 @@ Background {
 	# Color of the background 
 	color 0 0 0 
 	# low intensity white light
-	ambientLight 0.2 0.2 0.2 
+	ambientLight 0.2 0.2 0.2
 }
 
 Camera {
@@ -26,9 +26,9 @@ Materials {
 		diffuseColor 0.3 0.3 0.3
 		specularColor 0.3 0.3 0.3
 		reflectiveColor 0 0 0
-		shininess 50
+		shininess 100
 		transparentColor 0.8 0.8 0.8
-		indexOfRefraction 0.6
+		indexOfRefraction 1.6
 	}
 	Material {
 		textureFilename NULL
