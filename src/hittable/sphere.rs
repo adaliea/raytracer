@@ -7,13 +7,12 @@ use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use nalgebra::{Point3, Vector3};
 use std::f32::consts::PI;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Sphere {
     pub center: Vec3A,
     pub radius: f32,
-    pub material: Arc<Material>,
+    pub material: Material,
     node_index: usize,
 }
 
@@ -29,7 +28,7 @@ pub fn calc_uv(outward_normal: &Vec3A) -> Vec2 {
 }
 
 impl Sphere {
-    pub fn new(center: Vec3A, radius: f32, material: Arc<Material>) -> Self {
+    pub fn new(center: Vec3A, radius: f32, material: Material) -> Self {
         Self {
             center,
             radius,

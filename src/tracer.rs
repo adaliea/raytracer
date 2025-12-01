@@ -143,12 +143,12 @@ fn sample_direct_light(
 
         if let HittableObject::Sphere(light_sphere) = light_obj {
             // Get the light's emission
-            let (light_emit, light_strength) = match &*light_sphere.material {
+            let (light_emit, light_strength) = match &light_sphere.material {
                 Material::Emissive {
                     emit_color,
                     strength,
                 } => {
-                    (emit_color.sample(&LazyUv::Uv(Vec2::ZERO)), *strength) // UVs don't matter for solid color
+                    (emit_color.sample(&LazyUv::Uv(Vec2::ZERO)), strength) // UVs don't matter for solid color
                 }
                 _ => continue, // Not an emissive material
             };

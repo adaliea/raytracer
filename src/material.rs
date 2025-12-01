@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use crate::hittable::LazyUv;
 use glam::Vec3A;
 use image::RgbImage;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 #[allow(dead_code)]
 pub enum Material {
     /// A matte, non-reflective surface (e.g., paper, rough wood).
@@ -41,7 +42,7 @@ pub enum Material {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Texture {
-    Image(RgbImage),
+    Image(Arc<RgbImage>),
     SolidColor(Vec3A),
 }
 

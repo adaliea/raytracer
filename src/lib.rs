@@ -119,7 +119,7 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
     let elapsed = time.elapsed();
     let num_pixels = params.image_width as u64 * params.image_height as u64;
     let rays = total_rays.load(Ordering::Acquire);
-    info!("Rendering finished. Traced {} rays in {} seconds. {} rays/pixels, {} rays/s", rays, &elapsed.as_secs(), rays / num_pixels, rays / elapsed.as_secs());
+    info!("Rendering finished. Traced {} rays in {} seconds. {} rays/pixels, {} rays/s", rays, &elapsed.as_secs_f64(), rays / num_pixels, rays as f64 / elapsed.as_secs_f64());
     buffer
 }
 

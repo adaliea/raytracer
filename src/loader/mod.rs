@@ -49,7 +49,7 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
         aspect_ratio,
     );
 
-    let mut materials: Vec<Arc<Material>> = Vec::new();
+    let mut materials: Vec<Material> = Vec::new();
     let mut objects: Vec<HittableObject> = Vec::new();
 
     for mat in file_scene.materials {
@@ -80,7 +80,7 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                         );
                         Texture::SolidColor(mat.diffuse_color)
                     },
-                    Texture::Image,
+                    |i| Texture::Image(Arc::new(i)),
                 )
             } else {
                 Texture::SolidColor(mat.diffuse_color)
@@ -88,13 +88,13 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
             Material::Lambertian { albedo }
         };
 
-        materials.push(Arc::new(material));
+        materials.push(material);
     }
 
     if materials.is_empty() {
-        materials.push(Arc::new(Material::Lambertian {
+        materials.push(Material::Lambertian {
             albedo: Texture::SolidColor(Vec3A::splat(0.5)),
-        }));
+        });
         warn!("No materials found, using default");
     }
 
@@ -142,10 +142,10 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
     let mut lights: Vec<usize> = Vec::new();
 
     for light in file_scene.lights {
-        let emissive_material = Arc::new(Material::Emissive {
+        let emissive_material = Material::Emissive {
             emit_color: Texture::SolidColor(light.color),
             strength: default_light_strength,
-        });
+        };
 
         materials.push(emissive_material.clone());
 

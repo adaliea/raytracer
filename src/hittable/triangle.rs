@@ -6,12 +6,11 @@ use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use nalgebra::Point3;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
     v0: Vec3A,
-    material: Arc<Material>,
+    material: Material,
     uv0: Vec2,
     uv1: Vec2,
     uv2: Vec2,
@@ -34,7 +33,7 @@ impl Triangle {
         uv0: Vec2,
         uv1: Vec2,
         uv2: Vec2,
-        material: Arc<Material>,
+        material: Material,
     ) -> Self {
         let v0v1 = v1 - v0;
         let v0v2 = v2 - v0;
