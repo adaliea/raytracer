@@ -117,6 +117,8 @@ impl Hittable for Triangle {
 }
 
 impl Bounded<f32, 3> for Triangle {
+    #[inline(always)]
+
     fn aabb(&self) -> Aabb<f32, 3> {
         let mut min = Point3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
         let mut max = Point3::new(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY);
@@ -149,6 +151,7 @@ impl BHShape<f32, 3> for Triangle {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }
+    #[inline(always)]
     fn bh_node_index(&self) -> usize {
         self.node_index
     }

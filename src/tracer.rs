@@ -22,7 +22,10 @@ pub fn ray_color(
     rng: &mut impl Rng,
 ) -> TraceResult {
     if depth == 0 {
-        return TraceResult {color: Vec3A::ZERO, rays: 0 };
+        return TraceResult {
+            color: Vec3A::ZERO,
+            rays: 0,
+        };
     }
 
     if let Some(rec) = world.hit(r, 0.001, f32::INFINITY) {
@@ -33,9 +36,15 @@ pub fn ray_color(
             } => {
                 let emit = emit_color.sample(&rec.uv) * *strength;
                 return if depth == max_bounces || is_specular_ray {
-                    TraceResult {color: emit, rays: 1 } // It's a camera ray, return the light
+                    TraceResult {
+                        color: emit,
+                        rays: 1,
+                    } // It's a camera ray, return the light
                 } else {
-                    TraceResult {color: Vec3A::ZERO, rays: 1 } // It's an indirect bounce, don't double-count.
+                    TraceResult {
+                        color: Vec3A::ZERO,
+                        rays: 1,
+                    } // It's an indirect bounce, don't double-count.
                 };
             }
 
@@ -55,13 +64,15 @@ pub fn ray_color(
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
 
-                let indirect_trace = ray_color(&scattered_ray, world, depth - 1, max_bounces, false, rng);
+                let indirect_trace =
+                    ray_color(&scattered_ray, world, depth - 1, max_bounces, false, rng);
                 // Calculate indirect light
-                let indirect_light = (attenuation
-                    * indirect_trace.color)
-                    / probability;
+                let indirect_light = (attenuation * indirect_trace.color) / probability;
 
-                TraceResult {color: direct_trace.color + indirect_light, rays: indirect_trace.rays + direct_trace.rays + 1}
+                TraceResult {
+                    color: direct_trace.color + indirect_light,
+                    rays: indirect_trace.rays + direct_trace.rays + 1,
+                }
             }
 
             Material::Metallic { albedo, fuzz } => {
@@ -74,11 +85,18 @@ pub fn ray_color(
                     reflected_direction + fuzz * random_in_unit_sphere(rng),
                 );
 
-                let reflected_trace = ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
+                let reflected_trace =
+                    ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
-                    TraceResult {color: attenuation * reflected_trace.color, rays: reflected_trace.rays + 1 }
+                    TraceResult {
+                        color: attenuation * reflected_trace.color,
+                        rays: reflected_trace.rays + 1,
+                    }
                 } else {
-                    TraceResult {color: Vec3A::ZERO, rays: reflected_trace.rays + 1 }
+                    TraceResult {
+                        color: Vec3A::ZERO,
+                        rays: reflected_trace.rays + 1,
+                    }
                 }
             }
 
@@ -112,13 +130,20 @@ pub fn ray_color(
                 };
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
-                let scattered_trace = ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
-                TraceResult {color: attenuation * scattered_trace.color, rays: scattered_trace.rays + 1  }
+                let scattered_trace =
+                    ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
+                TraceResult {
+                    color: attenuation * scattered_trace.color,
+                    rays: scattered_trace.rays + 1,
+                }
             }
         };
     }
 
-    TraceResult {color: world.background_color, rays: 1}
+    TraceResult {
+        color: world.background_color,
+        rays: 1,
+    }
 }
 
 /// Samples all lights for a given hit point (NEE)
@@ -135,7 +160,10 @@ fn sample_direct_light(
     let total_samples = world.lights.len() * num_shadow_samples;
 
     if total_samples == 0 {
-        return TraceResult {color: Vec3A::ZERO , rays: 0};
+        return TraceResult {
+            color: Vec3A::ZERO,
+            rays: 0,
+        };
     }
 
     for light_index in &world.lights {
@@ -167,7 +195,6 @@ fn sample_direct_light(
                 let shadow_ray = Ray::new(rec.p, shadow_dir);
 
                 // Check if the ray is occluded
-                // Check up to `shadow_dist - 0.001` to avoid hitting the light itself
                 let shadow_ray_rec = world.hit(&shadow_ray, 0.001, f32::INFINITY);
 
                 if shadow_ray_rec
@@ -187,7 +214,10 @@ fn sample_direct_light(
         }
     }
 
-    TraceResult {color: total_direct_light, rays: total_samples as u64 }
+    TraceResult {
+        color: total_direct_light,
+        rays: total_samples as u64,
+    }
 }
 
 /// Generates a random 3D vector uniformly INSIDE a unit sphere.

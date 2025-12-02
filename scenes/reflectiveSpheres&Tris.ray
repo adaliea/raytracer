@@ -46,8 +46,8 @@ Materials {
 	Material {
 		textureFilename NULL
 		diffuseColor 0 0 0.5
-		specularColor 0.8 0.8 0.8
-		reflectiveColor 0.3 0.3 0.3
+		specularColor 0.2 0.2 0.8
+		reflectiveColor 0.3 0.3 0.8
 		shininess 50
 		transparentColor 0 0 0 
 		indexOfRefraction 0.6

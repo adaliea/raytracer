@@ -35,7 +35,7 @@ Materials {
 		diffuseColor 0.8 0.1 0.1
 		specularColor 0.3 0.3 0.3
 		reflectiveColor 0 0 0
-		shininess 50
+		shininess 100
 		transparentColor 0 0 0 
 		indexOfRefraction 0.6
 	}

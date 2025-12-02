@@ -30,6 +30,7 @@ pub enum LazyUv {
 }
 
 impl LazyUv {
+    #[inline(always)]
     pub fn get_uv(&self) -> Vec2 {
         match self {
             LazyUv::Uv(uv) => *uv,
@@ -71,6 +72,7 @@ impl Hittable for HittableObject {
 }
 
 impl Bounded<f32, 3> for HittableObject {
+    #[inline(always)]
     fn aabb(&self) -> bvh::aabb::Aabb<f32, 3> {
         match self {
             HittableObject::Sphere(s) => s.aabb(),
@@ -86,6 +88,8 @@ impl BHShape<f32, 3> for HittableObject {
             HittableObject::Triangle(t) => t.set_bh_node_index(index),
         }
     }
+
+    #[inline(always)]
     fn bh_node_index(&self) -> usize {
         match self {
             HittableObject::Sphere(s) => s.bh_node_index(),

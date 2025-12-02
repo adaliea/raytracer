@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         for scene_path in files {
             load_and_save_scene(&scene_path?.path(), params)?
-        };
+        }
         Ok(())
     } else {
         load_and_save_scene(path, params)

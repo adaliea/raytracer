@@ -80,6 +80,7 @@ impl Hittable for Sphere {
 }
 
 impl Bounded<f32, 3> for Sphere {
+    #[inline(always)]
     fn aabb(&self) -> Aabb<f32, 3> {
         let center = Point3::new(self.center.x, self.center.y, self.center.z);
         let half_size = Vector3::new(self.radius, self.radius, self.radius);
@@ -93,6 +94,8 @@ impl BHShape<f32, 3> for Sphere {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }
+
+    #[inline(always)]
     fn bh_node_index(&self) -> usize {
         self.node_index
     }

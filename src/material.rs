@@ -1,7 +1,7 @@
-use std::sync::Arc;
 use crate::hittable::LazyUv;
 use glam::Vec3A;
 use image::RgbImage;
+use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Clone)]
 #[allow(dead_code)]
