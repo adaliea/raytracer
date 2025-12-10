@@ -1,0 +1,283 @@
+# Brutalist Nature Sanctuary
+
+Background {
+    color 0.5 0.6 0.6 # Muted, overcast forest sky
+    ambientLight 0.15 0.15 0.15
+}
+
+Camera {
+    # Angled to look into the structure from a slight distance
+    eye 4.0 2.5 8.0
+    lookAt 0.0 1.5 0.0
+    up 0.0 1.0 0.0
+    fovy 45.0
+}
+
+Lights {
+    # Main Sunlight (Warm, coming from the opening in the roof)
+    Light {
+        position 3.0 10.0 2.0
+        color 1.0 0.95 0.85
+    }
+    # Fill Light (Cooler, softer, simulating skylight)
+    Light {
+        position -5.0 5.0 10.0
+        color 0.2 0.25 0.35
+    }
+}
+
+Materials {
+    # Material 0: Raw Dirty Concrete (The Brutalist Core)
+    Material {
+        textureFilename textures/dirty_concrete/dirty_concrete_diff_2k.jpg
+        normalMapFilename textures/dirty_concrete/dirty_concrete_nor_gl_2k.exr
+        specularColor 0.1 0.1 0.1
+        reflectiveColor 0.0 0.0 0.0
+        shininess 5.0
+        transparentColor 0.0 0.0 0.0
+        indexOfRefraction 1.0
+    }
+
+    # Material 1: Rocky Forest Floor
+    Material {
+        textureFilename textures/rocky_terrain/rocky_terrain_diff_2k.jpg
+        normalMapFilename textures/rocky_terrain/rocky_terrain_nor_gl_2k.exr
+        specularColor 0.05 0.05 0.05
+        reflectiveColor 0.0 0.0 0.0
+        shininess 2.0
+        transparentColor 0.0 0.0 0.0
+        indexOfRefraction 1.0
+    }
+
+    # Material 2: Dark Still Water (Reflecting Pool)
+    # No texture, purely reflective and dark
+    Material {
+        specularColor 1.0 1.0 1.0
+        reflectiveColor 0.8 0.8 0.8
+        shininess 100.0
+        transparentColor 0.0 0.0 0.0
+        indexOfRefraction 1.33
+    }
+}
+
+Group {
+    # --- THE GROUND ---
+    # Large rocky terrain plane
+    Triangle {
+        materialIndex 1
+        vertex0 -20.0 0.0 -20.0
+        vertex1 20.0 0.0 -20.0
+        vertex2 20.0 0.0 20.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 5.0 0.0
+        tex_xy_2 5.0 5.0
+    }
+    Triangle {
+        materialIndex 1
+        vertex0 -20.0 0.0 -20.0
+        vertex1 20.0 0.0 20.0
+        vertex2 -20.0 0.0 20.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 5.0 5.0
+        tex_xy_2 0.0 5.0
+    }
+
+    # --- THE BRUTALIST STRUCTURE ---
+
+    # 1. Main Platform (Concrete Base)
+    # Raising the building slightly off the uneven rocks
+    # Top Face of Platform
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 0.2 -3.0
+        vertex1 3.0 0.2 -3.0
+        vertex2 3.0 0.2 3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 1.0 0.0
+        tex_xy_2 1.0 1.0
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 0.2 -3.0
+        vertex1 3.0 0.2 3.0
+        vertex2 -3.0 0.2 3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 1.0 1.0
+        tex_xy_2 0.0 1.0
+    }
+
+    # 2. The Great Back Wall (Monolithic)
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 0.2 -3.0
+        vertex1 3.0 0.2 -3.0
+        vertex2 3.0 4.0 -3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.0
+        tex_xy_2 2.0 1.5
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 0.2 -3.0
+        vertex1 3.0 4.0 -3.0
+        vertex2 -3.0 4.0 -3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 1.5
+        tex_xy_2 0.0 1.5
+    }
+
+    # 3. Left Wall (Thick slab)
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 0.2 3.0
+        vertex1 -3.0 0.2 -3.0
+        vertex2 -3.0 4.0 -3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.0
+        tex_xy_2 2.0 1.5
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 0.2 3.0
+        vertex1 -3.0 4.0 -3.0
+        vertex2 -3.0 4.0 3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 1.5
+        tex_xy_2 0.0 1.5
+    }
+
+    # 4. Right Wall (With a gap at the bottom for intrigue)
+    # Only going from y=1.5 to y=4.0 creating a floating effect
+    Triangle {
+        materialIndex 0
+        vertex0 3.0 1.5 3.0
+        vertex1 3.0 1.5 -3.0
+        vertex2 3.0 4.0 -3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.0
+        tex_xy_2 2.0 1.0
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 3.0 1.5 3.0
+        vertex1 3.0 4.0 -3.0
+        vertex2 3.0 4.0 3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 1.0
+        tex_xy_2 0.0 1.0
+    }
+
+    # 5. The Ceiling (With an Oculus/Light Shaft)
+    # We will build this out of 4 quads leaving a hole in the middle
+
+    # Front Slab
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 4.0 3.0
+        vertex1 3.0 4.0 3.0
+        vertex2 3.0 4.0 1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.0
+        tex_xy_2 2.0 0.6
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 4.0 3.0
+        vertex1 3.0 4.0 1.0
+        vertex2 -3.0 4.0 1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.6
+        tex_xy_2 0.0 0.6
+    }
+
+    # Back Slab
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 4.0 -1.0
+        vertex1 3.0 4.0 -1.0
+        vertex2 3.0 4.0 -3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.0
+        tex_xy_2 2.0 0.6
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 4.0 -1.0
+        vertex1 3.0 4.0 -3.0
+        vertex2 -3.0 4.0 -3.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 2.0 0.6
+        tex_xy_2 0.0 0.6
+    }
+
+    # Left Slab (Connecting Front and Back)
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 4.0 1.0
+        vertex1 -1.0 4.0 1.0
+        vertex2 -1.0 4.0 -1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 0.6 0.0
+        tex_xy_2 0.6 0.6
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 -3.0 4.0 1.0
+        vertex1 -1.0 4.0 -1.0
+        vertex2 -3.0 4.0 -1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 0.6 0.6
+        tex_xy_2 0.0 0.6
+    }
+
+    # Right Slab (Connecting Front and Back)
+    Triangle {
+        materialIndex 0
+        vertex0 1.0 4.0 1.0
+        vertex1 3.0 4.0 1.0
+        vertex2 3.0 4.0 -1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 0.6 0.0
+        tex_xy_2 0.6 0.6
+    }
+    Triangle {
+        materialIndex 0
+        vertex0 1.0 4.0 1.0
+        vertex1 3.0 4.0 -1.0
+        vertex2 1.0 4.0 -1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 0.6 0.6
+        tex_xy_2 0.0 0.6
+    }
+
+    # --- WATER FEATURE ---
+    # A central reflecting pool sitting on top of the concrete floor
+    # Located directly under the skylight hole (x: -1 to 1, z: -1 to 1)
+
+    Triangle {
+        materialIndex 2
+        vertex0 -1.0 0.25 1.0
+        vertex1 1.0 0.25 1.0
+        vertex2 1.0 0.25 -1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 1.0 0.0
+        tex_xy_2 1.0 1.0
+    }
+    Triangle {
+        materialIndex 2
+        vertex0 -1.0 0.25 1.0
+        vertex1 1.0 0.25 -1.0
+        vertex2 -1.0 0.25 -1.0
+        tex_xy_0 0.0 0.0
+        tex_xy_1 1.0 1.0
+        tex_xy_2 0.0 1.0
+    }
+
+    # --- DECORATIVE GEOMETRY ---
+    # A floating concrete sphere (classic Brutalist/Surrealist trope)
+    Sphere {
+        materialIndex 0
+        center 0.0 1.5 -1.5
+        radius 0.5
+    }
+}

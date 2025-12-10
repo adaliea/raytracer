@@ -30,3 +30,17 @@ cargo run --release -- --help
 Located in `target/release/raytracer` or `target/x86_64-pc-windows-gnu/release/raytracer.exe'
 
 Use `--help` to see the help menu.
+
+
+# Credits
+## Textures:
+https://polyhaven.com/a/laminate_floor_02
+https://polyhaven.com/a/painted_plaster_wall
+https://polyhaven.com/a/whitewashed_brick
+https://polyhaven.com/a/rocky_terrain
+https://polyhaven.com/a/dry_riverbed_rock
+https://polyhaven.com/a/gravelly_sand
+https://polyhaven.com/a/plank_flooring_03
+https://polyhaven.com/a/cobblestone_pavement
+https://polyhaven.com/a/dirty_concrete
+https://polyhaven.com/a/coral_fort_wall_02
