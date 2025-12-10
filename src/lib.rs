@@ -48,7 +48,7 @@ impl RenderParameters {
         }
     }
 }
-pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+pub fn render_hdr(params: RenderParameters, scene: Scene) -> Vec<f32> {
     // Image
     let time = Instant::now();
     info!(
@@ -68,15 +68,18 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
     );
 
     // Render
-    let mut buffer: ImageBuffer<Rgb<u8>, Vec<u8>> =
-        ImageBuffer::new(params.image_width, params.image_height);
+    let mut hdr_buffer =
+        vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
 
     let total_rays = AtomicU64::new(0);
     // parallelizes per image row
-    buffer
-        .enumerate_pixels_mut()
-        .par_bridge()
-        .for_each(|(x, y, pixel)| {
+    hdr_buffer
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, pixel)| {
+            let x = i as u32 % params.image_width;
+            let y = i as u32 / params.image_width;
+
             let mut rng = rand::rng();
             let mut color = Vec3A::ZERO;
             let mut rays = 0;
@@ -98,21 +101,10 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
                 color += trace.color;
                 rays += trace.rays;
             }
-            color /= params.samples_per_pixel as f32;
+            *pixel = color / params.samples_per_pixel as f32;
 
-            // Basic tone mapping
-            color = color / (color + Vec3A::splat(1.0));
-
-            // Gamma correction
-            color = color.powf(1.0 / 2.2);
-
-            *pixel = Rgb([
-                (color.x.clamp(0.0, 0.999) * 256.0) as u8,
-                (color.y.clamp(0.0, 0.999) * 256.0) as u8,
-                (color.z.clamp(0.0, 0.999) * 256.0) as u8,
-            ]);
             bar.inc(1);
-            total_rays.fetch_add(rays, Ordering::Release);
+            total_rays.fetch_add(rays, Ordering::Relaxed);
         });
 
     bar.finish();
@@ -126,10 +118,18 @@ pub fn render(params: RenderParameters, scene: Scene) -> ImageBuffer<Rgb<u8>, Ve
         rays / num_pixels,
         rays as f64 / elapsed.as_secs_f64()
     );
-    buffer
+
+    // Flatten the buffer of Vec3A to a Vec<f32> for OIDN
+    hdr_buffer.into_iter().flat_map(|v| v.to_array()).collect()
 }
 
-pub fn save_buffer(buffer: ImageBuffer<Rgb<u8>, Vec<u8>>, scene_path: &Path) -> ImageResult<()> {
+pub fn save_hdr_image(
+    hdr_data: &[f32],
+    width: u32,
+    height: u32,
+    scene_path: &Path,
+    suffix: &str, // e.g., "_noisy", "_denoised"
+) -> ImageResult<()> {
     let path = Path::new(scene_path);
     let filename = path.file_stem().unwrap().to_str().unwrap();
     let dir = Path::new("output");
@@ -137,8 +137,36 @@ pub fn save_buffer(buffer: ImageBuffer<Rgb<u8>, Vec<u8>>, scene_path: &Path) -> 
         create_dir(dir)
             .unwrap_or_else(|_| panic!("Failed to create output directory {}", dir.display()))
     }
-    // Save image
-    buffer.save(format!("output/{}.png", filename))
+
+    let mut img_buffer: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width, height);
+
+    for y in 0..height {
+        for x in 0..width {
+            let i = ((y * width + x) * 3) as usize;
+            let r_hdr = hdr_data[i];
+            let g_hdr = hdr_data[i + 1];
+            let b_hdr = hdr_data[i + 2];
+
+            let mut color = Vec3A::new(r_hdr, g_hdr, b_hdr);
+
+            // Basic tone mapping
+            color = color / (color + Vec3A::splat(1.0));
+
+            // Gamma correction
+            color = color.powf(1.0 / 2.2);
+
+            img_buffer.put_pixel(
+                x,
+                y,
+                Rgb([
+                    (color.x.clamp(0.0, 0.999) * 256.0) as u8,
+                    (color.y.clamp(0.0, 0.999) * 256.0) as u8,
+                    (color.z.clamp(0.0, 0.999) * 256.0) as u8,
+                ]),
+            );
+        }
+    }
+    img_buffer.save(format!("output/{}{}.png", filename, suffix))
 }
 
 pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error>> {
@@ -152,6 +180,35 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
 
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
     let scene = load_scene(path, params.aspect_ratio)?;
-    let rendered = render(params, scene);
-    save_buffer(rendered, path).map_err(Box::from)
+    let rendered_hdr_data = render_hdr(params, scene);
+
+    // Save noisy HDR image (after sRGB conversion)
+    save_hdr_image(
+        &rendered_hdr_data,
+        params.image_width,
+        params.image_height,
+        path,
+        "_noisy",
+    )?;
+
+    // Denoise with OIDN
+    info!("Denoising image with OIDN...");
+    let mut denoised_hdr_data = vec![0.0; rendered_hdr_data.len()];
+    let mut device = oidn::Device::new();
+    oidn::RayTracing::new(&mut device)
+        .image_dimensions(params.image_width as usize, params.image_height as usize)
+        .hdr(true)
+        .filter(&rendered_hdr_data, &mut denoised_hdr_data)
+        .map_err(|e| format!("{:?}", e))?;
+
+
+    // Save denoised HDR image (after sRGB conversion)
+    save_hdr_image(
+        &denoised_hdr_data,
+        params.image_width,
+        params.image_height,
+        path,
+        "", // No suffix for the final denoised image
+    )
+    .map_err(Box::from)
 }
