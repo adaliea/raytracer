@@ -10,8 +10,8 @@ use crate::scene::Scene;
 use bvh::bounding_hierarchy::BoundingHierarchy;
 use bvh::bvh::Bvh;
 use glam::Vec3A;
-use image::{ImageError, RgbImage};
-use log::{error, warn};
+use image::{ImageError, Rgb32FImage};
+use log::{error, info, warn};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -35,10 +35,11 @@ fn warn_out_of_range(range: (f32, f32), value: f32, name: &str) -> f32 {
     }
 }
 
-fn load_texture(texture_path: &Path, scene_path: &Path) -> Result<RgbImage, ImageError> {
+fn load_texture(texture_path: &Path, scene_path: &Path) -> Result<Rgb32FImage, ImageError> {
     let texture_path = scene_path.parent().unwrap().join(texture_path);
+    info!("Attempting to load texture at: {:?}", &texture_path);
     let img = image::open(&texture_path);
-    img.map(|i| i.to_rgb8())
+    img.map(|i| i.to_rgb32f())
 }
 
 pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error>> {
@@ -64,13 +65,8 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                 index_of_refraction: mat.index_of_refraction,
                 fuzz,
             }
-        } else if mat.reflective_color.length() > 0.0 {
-            Material::Metallic {
-                albedo: Texture::SolidColor(mat.reflective_color),
-                fuzz,
-            }
         } else {
-            // Check for texture
+            // Load albedo texture if it exists
             let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
                 load_texture(Path::new(&filename), path).map_or_else(
                     |error| {
@@ -80,14 +76,49 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                             path.display(),
                             error
                         );
-                        Texture::SolidColor(mat.diffuse_color)
+                        // Use diffuse color as fallback
+                        Texture::SolidColor(if mat.reflective_color.length() > 0.0 {
+                            mat.reflective_color
+                        } else {
+                            mat.diffuse_color
+                        })
                     },
                     |i| Texture::Image(Arc::new(i)),
                 )
+            } else if mat.reflective_color.length() > 0.0 {
+                Texture::SolidColor(mat.reflective_color)
             } else {
                 Texture::SolidColor(mat.diffuse_color)
             };
-            Material::Lambertian { albedo }
+
+            // Load normal map if it exists
+            let normal_map =
+                if let Some(filename) = mat.normal_map_filename.filter(|f| f != "NULL") {
+                    load_texture(Path::new(&filename), path).map_or_else(
+                        |error| {
+                            error!(
+                                "Failed to load normal map {} in {}; reason: {}",
+                                filename,
+                                path.display(),
+                                error
+                            );
+                            None
+                        },
+                        |i| Some(Texture::Image(Arc::new(i))),
+                    )
+                } else {
+                    None
+                };
+
+            if mat.reflective_color.length() > 0.0 {
+                Material::Metallic {
+                    albedo,
+                    fuzz,
+                    normal_map,
+                }
+            } else {
+                Material::Lambertian { albedo, normal_map }
+            }
         };
 
         materials.push(material);
@@ -96,6 +127,7 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
     if materials.is_empty() {
         materials.push(Material::Lambertian {
             albedo: Texture::SolidColor(Vec3A::splat(0.5)),
+            normal_map: None,
         });
         warn!("No materials found, using default");
     }

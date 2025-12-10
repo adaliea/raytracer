@@ -8,6 +8,21 @@ use glam::{Vec2, Vec3A};
 use nalgebra::{Point3, Vector3};
 use std::f32::consts::PI;
 
+#[inline(always)]
+fn get_sphere_tangents(outward_normal: &Vec3A) -> (Vec3A, Vec3A) {
+    // Choose a vector that is not parallel to the normal
+    let up = if outward_normal.x.abs() > 0.9 {
+        Vec3A::Y
+    } else {
+        Vec3A::X
+    };
+
+    let tangent = outward_normal.cross(up).normalize();
+    let bitangent = outward_normal.cross(tangent).normalize();
+
+    (tangent, bitangent)
+}
+
 #[derive(Debug, Clone)]
 pub struct Sphere {
     pub center: Vec3A,
@@ -63,11 +78,14 @@ impl Hittable for Sphere {
         let t = root;
         let p = r.at(t);
         let outward_normal = (p - self.center) / self.radius;
+        let (tangent, bitangent) = get_sphere_tangents(&outward_normal);
 
         let mut rec = HitRecord {
             t,
             p,
             normal: Vec3A::ZERO, // Placeholder
+            tangent,
+            bitangent,
             front_face: false,   // Placeholder
             material: &self.material,
             uv: LazySphere { outward_normal },

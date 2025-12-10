@@ -23,6 +23,7 @@ pub struct Light {
 #[derive(Debug, Default, Clone)]
 pub struct Material {
     pub texture_filename: Option<String>,
+    pub normal_map_filename: Option<String>,
     pub diffuse_color: Vec3A,
     pub specular_color: Vec3A,
     pub reflective_color: Vec3A,

@@ -15,6 +15,8 @@ pub struct HitRecord<'a> {
     /// Point Ray intersected
     pub p: Vec3A,
     pub normal: Vec3A,
+    pub tangent: Vec3A,
+    pub bitangent: Vec3A,
     /// Distance Ray traveled
     pub t: f32,
     pub front_face: bool,

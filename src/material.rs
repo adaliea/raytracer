@@ -1,6 +1,6 @@
 use crate::hittable::LazyUv;
 use glam::Vec3A;
-use image::RgbImage;
+use image::Rgb32FImage;
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -11,6 +11,7 @@ pub enum Material {
     Lambertian {
         /// Color of the surface
         albedo: Texture,
+        normal_map: Option<Texture>,
     },
 
     /// A shiny, reflective surface (e.g., metal, polished chrome).
@@ -18,6 +19,7 @@ pub enum Material {
     Metallic {
         /// Color of the reflective surface
         albedo: Texture,
+        normal_map: Option<Texture>,
         /// How "fuzzy" or rough the reflection is (0.0 = perfect mirror)
         fuzz: f32,
     },
@@ -42,7 +44,7 @@ pub enum Material {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Texture {
-    Image(Arc<RgbImage>),
+    Image(Arc<Rgb32FImage>),
     SolidColor(Vec3A),
 }
 
@@ -53,15 +55,16 @@ impl Texture {
             Texture::Image(image) => {
                 let uv = uv.get_uv();
 
-                let rgb = image.get_pixel(
-                    (uv.x * (image.width() - 1) as f32) as u32,
-                    (uv.y * (image.height() - 1) as f32) as u32,
-                );
-                Vec3A::new(
-                    rgb[0] as f32 / 255.0,
-                    rgb[1] as f32 / 255.0,
-                    rgb[2] as f32 / 255.0,
-                )
+                // Use clamp to prevent out of bounds access
+                let u = uv.x.clamp(0.0, 1.0);
+                // Flip v for image coords
+                let v = 1.0 - uv.y.clamp(0.0, 1.0);
+
+                let x = (u * (image.width() - 1) as f32) as u32;
+                let y = (v * (image.height() - 1) as f32) as u32;
+
+                let pixel = image.get_pixel(x, y);
+                Vec3A::new(pixel[0], pixel[1], pixel[2])
             }
             Texture::SolidColor(color) => *color,
         }

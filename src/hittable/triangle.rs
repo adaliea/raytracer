@@ -17,6 +17,8 @@ pub struct Triangle {
     v0v1: Vec3A,
     v0v2: Vec3A,
     normal: Vec3A,
+    tangent: Vec3A,
+    bitangent: Vec3A,
     d: f32,
     dot00: f32,
     dot01: f32,
@@ -46,6 +48,14 @@ impl Triangle {
         let denom = dot00 * dot11 - dot01 * dot01;
         let inv_denom = if denom.abs() < 1e-6 { 0.0 } else { 1.0 / denom };
 
+        let delta_uv1 = uv1 - uv0;
+        let delta_uv2 = uv2 - uv0;
+
+        let f = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv2.x * delta_uv1.y);
+
+        let tangent = (f * (delta_uv2.y * v0v1 - delta_uv1.y * v0v2)).normalize();
+        let bitangent = (f * (-delta_uv2.x * v0v1 + delta_uv1.x * v0v2)).normalize();
+
         Self {
             v0,
             uv0,
@@ -55,6 +65,8 @@ impl Triangle {
             v0v1,
             v0v2,
             normal,
+            tangent,
+            bitangent,
             d,
             dot00,
             dot01,
@@ -105,6 +117,8 @@ impl Hittable for Triangle {
             t,
             p,
             normal: Vec3A::ZERO,
+            tangent: self.tangent,
+            bitangent: self.bitangent,
             front_face: false,
             material: &self.material,
             uv: Uv(uv),

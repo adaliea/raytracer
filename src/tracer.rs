@@ -3,7 +3,7 @@ use crate::material::Material;
 use crate::ray::Ray;
 use crate::scene::Scene;
 use bvh::bounding_hierarchy::BHShape;
-use glam::{Vec2, Vec3A};
+use glam::{Mat3A, Vec2, Vec3A};
 use rand::Rng;
 use rand_distr::{Distribution, UnitSphere};
 
@@ -56,11 +56,11 @@ pub fn ray_color(
                 };
             }
 
-            // TODO create a combined model for metallic and lambertian
-            Material::Lambertian { albedo } => {
+            Material::Lambertian { albedo, normal_map } => {
                 let attenuation = albedo.sample(&rec.uv);
+                let shading_normal = get_perturbed_normal(normal_map, &rec);
 
-                let direct_trace = sample_direct_light(world, &rec, attenuation, rng);
+                let direct_trace = sample_direct_light(world, &rec, shading_normal, attenuation, rng);
 
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
@@ -68,12 +68,12 @@ pub fn ray_color(
                     return TraceResult {
                         color: direct_trace.color,
                         albedo: attenuation,
-                        normal: rec.normal,
+                        normal: shading_normal,
                         rays: direct_trace.rays,
                     };
                 }
 
-                let scatter_direction = rec.normal + random_on_unit_sphere(rng);
+                let scatter_direction = shading_normal + random_on_unit_sphere(rng);
 
                 let scattered_ray = Ray::new(rec.p, scatter_direction);
 
@@ -85,16 +85,20 @@ pub fn ray_color(
                 TraceResult {
                     color: direct_trace.color + indirect_light,
                     albedo: attenuation,
-                    normal: rec.normal,
+                    normal: shading_normal,
                     rays: indirect_trace.rays + direct_trace.rays + 1,
                 }
             }
 
-            Material::Metallic { albedo, fuzz } => {
-                // RR check for specular bounces
+            Material::Metallic {
+                albedo,
+                fuzz,
+                normal_map,
+            } => {
                 let attenuation = albedo.sample(&rec.uv);
+                let shading_normal = get_perturbed_normal(normal_map, &rec);
 
-                let reflected_direction = reflect(r.direction.normalize(), rec.normal);
+                let reflected_direction = reflect(r.direction.normalize(), shading_normal);
                 let scattered_ray = Ray::new(
                     rec.p,
                     reflected_direction + fuzz * random_in_unit_sphere(rng),
@@ -102,18 +106,18 @@ pub fn ray_color(
 
                 let reflected_trace =
                     ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
-                if scattered_ray.direction.dot(rec.normal) > 0.0 {
+                if scattered_ray.direction.dot(shading_normal) > 0.0 {
                     TraceResult {
                         color: attenuation * reflected_trace.color,
                         albedo: attenuation,
-                        normal: rec.normal,
+                        normal: shading_normal,
                         rays: reflected_trace.rays + 1,
                     }
                 } else {
                     TraceResult {
                         color: Vec3A::ZERO,
                         albedo: attenuation,
-                        normal: rec.normal,
+                        normal: shading_normal,
                         rays: reflected_trace.rays + 1,
                     }
                 }
@@ -124,6 +128,9 @@ pub fn ray_color(
                 fuzz,
             } => {
                 let attenuation = Vec3A::ONE; // Dielectrics are white
+                // Dielectrics do not use normal mapping in this implementation
+                // (it's complex to get right with refraction)
+                let shading_normal = rec.normal;
 
                 let refraction_ratio = if rec.front_face {
                     1.0 / index_of_refraction
@@ -132,18 +139,18 @@ pub fn ray_color(
                 };
 
                 let unit_direction = r.direction.normalize();
-                let cos_theta = (-unit_direction).dot(rec.normal).min(1.0);
+                let cos_theta = (-unit_direction).dot(shading_normal).min(1.0);
                 let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
                 let cannot_refract = refraction_ratio * sin_theta > 1.0;
 
                 let reflectance = schlick(cos_theta, refraction_ratio);
 
                 let scatter_direction = if cannot_refract || reflectance > rand::random::<f32>() {
-                    reflect(unit_direction, rec.normal)
+                    reflect(unit_direction, shading_normal)
                 } else {
                     refract(
                         unit_direction,
-                        rec.normal + random_on_unit_sphere(rng) * fuzz,
+                        shading_normal + random_on_unit_sphere(rng) * fuzz,
                         refraction_ratio,
                     )
                 };
@@ -154,7 +161,7 @@ pub fn ray_color(
                 TraceResult {
                     color: attenuation * scattered_trace.color,
                     albedo: attenuation,
-                    normal: rec.normal,
+                    normal: shading_normal,
                     rays: scattered_trace.rays + 1,
                 }
             }
@@ -174,6 +181,7 @@ pub fn ray_color(
 fn sample_direct_light(
     world: &Scene,
     rec: &HitRecord,
+    shading_normal: Vec3A,
     attenuation: Vec3A,
     rng: &mut impl Rng,
 ) -> TraceResult {
@@ -226,7 +234,7 @@ fn sample_direct_light(
                     .map(|r| r.bh_object_index == light_sphere.bh_node_index())
                     .unwrap_or(true)
                 {
-                    let cos_theta = rec.normal.dot(shadow_dir.normalize()).max(0.0);
+                    let cos_theta = shading_normal.dot(shadow_dir.normalize()).max(0.0);
 
                     // (1/dist^2) falloff
 
@@ -294,4 +302,18 @@ fn schlick(cosine: f32, ref_ratio: f32) -> f32 {
     let r0 = (1.0 - ref_ratio) / (1.0 + ref_ratio);
     let r0 = r0 * r0;
     r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+}
+
+#[inline(always)]
+fn get_perturbed_normal(
+    normal_map: &Option<crate::material::Texture>,
+    rec: &HitRecord,
+) -> Vec3A {
+    if let Some(map) = normal_map {
+        let tangent_normal = map.sample(&rec.uv) * 2.0 - 1.0;
+        let tbn = Mat3A::from_cols(rec.tangent, rec.bitangent, rec.normal);
+        (tbn * tangent_normal).normalize()
+    } else {
+        rec.normal
+    }
 }

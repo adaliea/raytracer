@@ -8,7 +8,7 @@ anyhow = "1.0"
 env_logger = "0.11"
 glam = { version = "0.30.9", features = ["rand", "zerocopy", "approx", "fast-math", "serde"] }
 
-image = "0.25.9"
+image = { version = "0.25.9", features = ["exr", "png", "jpeg", "hdr"] }
 indicatif = { version = "0.18.3", features = ["improved_unicode"] }
 log = "0.4"
 rayon = "1.11"

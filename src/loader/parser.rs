@@ -165,6 +165,13 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
                     material.texture_filename = Some(filename.to_string());
                 }
             }
+            "normalMapFilename" => {
+                tokens.next();
+                let filename = tokens.next().unwrap();
+                if filename != "NULL" {
+                    material.normal_map_filename = Some(filename.to_string());
+                }
+            }
             "diffuseColor" => {
                 tokens.next();
                 material.diffuse_color = parse_vec3a(tokens);
