@@ -9,21 +9,24 @@ use nalgebra::Point3;
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
-    v0: Vec3A,
-    material: Material,
-    uv0: Vec2,
-    uv1: Vec2,
-    uv2: Vec2,
-    v0v1: Vec3A,
-    v0v2: Vec3A,
-    normal: Vec3A,
-    tangent: Vec3A,
-    bitangent: Vec3A,
-    d: f32,
-    dot00: f32,
-    dot01: f32,
-    dot11: f32,
-    inv_denom: f32,
+    pub v0: Vec3A,
+    pub material: Material,
+    pub uv0: Vec2,
+    pub uv1: Vec2,
+    pub uv2: Vec2,
+    pub n0: Vec3A,
+    pub n1: Vec3A,
+    pub n2: Vec3A,
+    pub v0v1: Vec3A,
+    pub v0v2: Vec3A,
+    pub normal: Vec3A,
+    pub tangent: Vec3A,
+    pub bitangent: Vec3A,
+    pub d: f32,
+    pub dot00: f32,
+    pub dot01: f32,
+    pub dot11: f32,
+    pub inv_denom: f32,
     node_index: usize,
 }
 
@@ -35,6 +38,9 @@ impl Triangle {
         uv0: Vec2,
         uv1: Vec2,
         uv2: Vec2,
+        n0: Vec3A,
+        n1: Vec3A,
+        n2: Vec3A,
         material: Material,
     ) -> Self {
         let v0v1 = v1 - v0;
@@ -62,6 +68,9 @@ impl Triangle {
             uv1,
             uv2,
             material,
+            n0,
+            n1,
+            n2,
             v0v1,
             v0v2,
             normal,
@@ -110,8 +119,10 @@ impl Hittable for Triangle {
         }
 
         // valid hit
+        let w = 1.0 - u - v;
+        let interpolated_normal = (self.n0 * w + self.n1 * u + self.n2 * v).normalize();
 
-        let uv = self.uv0 * (1.0 - u - v) + self.uv1 * u + self.uv2 * v;
+        let uv = self.uv0 * w + self.uv1 * u + self.uv2 * v;
 
         let mut rec = HitRecord {
             t,
@@ -124,7 +135,7 @@ impl Hittable for Triangle {
             uv: Uv(uv),
             bh_object_index: self.node_index,
         };
-        rec.set_face_normal(r, self.normal);
+        rec.set_face_normal(r, interpolated_normal);
 
         Some(rec)
     }

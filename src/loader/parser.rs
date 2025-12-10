@@ -172,6 +172,13 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
                     material.normal_map_filename = Some(filename.to_string());
                 }
             }
+            "displacementMapFilename" => {
+                tokens.next();
+                let filename = tokens.next().unwrap();
+                if filename != "NULL" {
+                    material.displacement_map_filename = Some(filename.to_string());
+                }
+            }
             "diffuseColor" => {
                 tokens.next();
                 material.diffuse_color = parse_vec3a(tokens);
@@ -195,6 +202,10 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
             "indexOfRefraction" => {
                 tokens.next();
                 material.index_of_refraction = parse_f32(tokens);
+            }
+            "displacementStrength" => {
+                tokens.next();
+                material.displacement_strength = parse_f32(tokens);
             }
             "}" => {
                 tokens.next();
@@ -225,6 +236,14 @@ fn parse_group<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<
                 tokens.next();
                 objects.push(parse_triangle(tokens));
             }
+            "Mesh" => {
+                tokens.next();
+                objects.push(parse_mesh(tokens));
+            }
+            "Cylinder" => {
+                tokens.next();
+                objects.push(parse_cylinder(tokens));
+            }
             _ => {
                 tokens.next();
             }
@@ -241,6 +260,9 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
     let mut tex_xy_0 = Vec2::ZERO;
     let mut tex_xy_1 = Vec2::ZERO;
     let mut tex_xy_2 = Vec2::ZERO;
+    let mut normal0 = Vec3A::ZERO;
+    let mut normal1 = Vec3A::ZERO;
+    let mut normal2 = Vec3A::ZERO;
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
         match *token {
@@ -272,6 +294,18 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
                 tokens.next();
                 tex_xy_2 = parse_vec2(tokens);
             }
+            "normal0" => {
+                tokens.next();
+                normal0 = parse_vec3a(tokens);
+            }
+            "normal1" => {
+                tokens.next();
+                normal1 = parse_vec3a(tokens);
+            }
+            "normal2" => {
+                tokens.next();
+                normal2 = parse_vec3a(tokens);
+            }
             "}" => {
                 tokens.next();
                 break;
@@ -281,6 +315,16 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
             }
         }
     }
+
+    if normal0 == Vec3A::ZERO && normal1 == Vec3A::ZERO && normal2 == Vec3A::ZERO {
+        let v0v1 = vertex1 - vertex0;
+        let v0v2 = vertex2 - vertex0;
+        let face_normal = v0v1.cross(v0v2).normalize();
+        normal0 = face_normal;
+        normal1 = face_normal;
+        normal2 = face_normal;
+    }
+
     Object::Triangle {
         material_index,
         vertex0,
@@ -289,6 +333,9 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
         tex_xy_0,
         tex_xy_1,
         tex_xy_2,
+        normal0,
+        normal1,
+        normal2,
     }
 }
 
@@ -324,6 +371,76 @@ fn parse_sphere<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Obj
         material_index,
         center,
         radius,
+    }
+}
+
+fn parse_mesh<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
+    let mut material_index = 0;
+    let mut filename = String::new();
+    expect_token(tokens, "{");
+    while let Some(token) = tokens.peek() {
+        match *token {
+            "materialIndex" => {
+                tokens.next();
+                material_index = parse_usize(tokens);
+            }
+            "filename" => {
+                tokens.next();
+                filename = tokens.next().unwrap().to_string();
+            }
+            "}" => {
+                tokens.next();
+                break;
+            }
+            _ => {
+                tokens.next();
+            }
+        }
+    }
+    Object::Mesh {
+        filename,
+        material_index,
+    }
+}
+
+fn parse_cylinder<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
+    let mut material_index = 0;
+    let mut center = Vec3A::ZERO;
+    let mut radius = 0.0;
+    let mut height = 0.0;
+    expect_token(tokens, "{");
+    while let Some(token) = tokens.peek() {
+        match *token {
+            "materialIndex" => {
+                tokens.next();
+                material_index = parse_usize(tokens);
+            }
+            "center" => {
+                tokens.next();
+                center = parse_vec3a(tokens);
+            }
+            "radius" => {
+                tokens.next();
+                radius = parse_f32(tokens);
+            }
+            "height" => {
+                tokens.next();
+                height = parse_f32(tokens);
+            }
+            "}" => {
+                tokens.next();
+                break;
+            }
+            _ => {
+                tokens.next();
+            }
+        }
+    }
+    Object::Cylinder {
+        material_index,
+        center,
+        radius,
+        height,
     }
 }
 

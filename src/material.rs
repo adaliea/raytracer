@@ -12,6 +12,8 @@ pub enum Material {
         /// Color of the surface
         albedo: Texture,
         normal_map: Option<Texture>,
+        displacement_map: Option<Texture>,
+        displacement_strength: f32,
     },
 
     /// A shiny, reflective surface (e.g., metal, polished chrome).
@@ -20,8 +22,10 @@ pub enum Material {
         /// Color of the reflective surface
         albedo: Texture,
         normal_map: Option<Texture>,
+        displacement_map: Option<Texture>,
         /// How "fuzzy" or rough the reflection is (0.0 = perfect mirror)
         fuzz: f32,
+        displacement_strength: f32,
     },
 
     /// A transparent, refractive surface (e.g., glass, water).
@@ -30,6 +34,8 @@ pub enum Material {
         index_of_refraction: f32, // e.g., 1.5 for glass
         /// How "fuzzy" or rough the reflection is (0.0 = perfect mirror)
         fuzz: f32,
+        displacement_map: Option<Texture>,
+        displacement_strength: f32,
     },
 
     /// A surface that emits light.
@@ -67,6 +73,17 @@ impl Texture {
                 Vec3A::new(pixel[0], pixel[1], pixel[2])
             }
             Texture::SolidColor(color) => *color,
+        }
+    }
+}
+
+impl Material {
+    pub fn has_displacement_map(&self) -> bool {
+        match self {
+            Material::Lambertian { displacement_map, .. } => displacement_map.is_some(),
+            Material::Metallic { displacement_map, .. } => displacement_map.is_some(),
+            Material::Dielectric { displacement_map, .. } => displacement_map.is_some(),
+            Material::Emissive { .. } => false,
         }
     }
 }

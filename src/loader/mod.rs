@@ -5,6 +5,7 @@ use crate::camera::Camera;
 use crate::hittable::HittableObject;
 use crate::hittable::sphere::Sphere;
 use crate::hittable::triangle::Triangle;
+use crate::hittable::tessellator;
 use crate::material::{Material, Texture};
 use crate::scene::Scene;
 use bvh::bounding_hierarchy::BoundingHierarchy;
@@ -60,64 +61,92 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
     for mat in file_scene.materials {
         let fuzz = 1.0 - (warn_out_of_range((0.0, 100.0), mat.shininess, "shininess") / 100.0);
 
-        let material = if mat.transparent_color.length() > 0.0 {
-            Material::Dielectric {
-                index_of_refraction: mat.index_of_refraction,
-                fuzz,
-            }
+        // Load albedo texture if it exists
+        let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
+            load_texture(Path::new(&filename), path).map_or_else(
+                |error| {
+                    error!(
+                        "Failed to load texture {} in {}; reason: {}",
+                        filename,
+                        path.display(),
+                        error
+                    );
+                    // Use diffuse color as fallback
+                    Texture::SolidColor(if mat.reflective_color.length() > 0.0 {
+                        mat.reflective_color
+                    } else {
+                        mat.diffuse_color
+                    })
+                },
+                |i| Texture::Image(Arc::new(i)),
+            )
+        } else if mat.reflective_color.length() > 0.0 {
+            Texture::SolidColor(mat.reflective_color)
         } else {
-            // Load albedo texture if it exists
-            let albedo = if let Some(filename) = mat.texture_filename.filter(|f| f != "NULL") {
+            Texture::SolidColor(mat.diffuse_color)
+        };
+
+        // Load normal map if it exists
+        let normal_map = if let Some(filename) = mat.normal_map_filename.filter(|f| f != "NULL") {
+            load_texture(Path::new(&filename), path).map_or_else(
+                |error| {
+                    error!(
+                        "Failed to load normal map {} in {}; reason: {}",
+                        filename,
+                        path.display(),
+                        error
+                    );
+                    None
+                },
+                |i| Some(Texture::Image(Arc::new(i))),
+            )
+        } else {
+            None
+        };
+
+        // Load displacement map if it exists
+        let displacement_map =
+            if let Some(filename) = mat.displacement_map_filename.filter(|f| f != "NULL") {
                 load_texture(Path::new(&filename), path).map_or_else(
                     |error| {
                         error!(
-                            "Failed to load texture {} in {}; reason: {}",
+                            "Failed to load displacement map {} in {}; reason: {}",
                             filename,
                             path.display(),
                             error
                         );
-                        // Use diffuse color as fallback
-                        Texture::SolidColor(if mat.reflective_color.length() > 0.0 {
-                            mat.reflective_color
-                        } else {
-                            mat.diffuse_color
-                        })
+                        None
                     },
-                    |i| Texture::Image(Arc::new(i)),
+                    |i| Some(Texture::Image(Arc::new(i))),
                 )
-            } else if mat.reflective_color.length() > 0.0 {
-                Texture::SolidColor(mat.reflective_color)
             } else {
-                Texture::SolidColor(mat.diffuse_color)
+                None
             };
 
-            // Load normal map if it exists
-            let normal_map =
-                if let Some(filename) = mat.normal_map_filename.filter(|f| f != "NULL") {
-                    load_texture(Path::new(&filename), path).map_or_else(
-                        |error| {
-                            error!(
-                                "Failed to load normal map {} in {}; reason: {}",
-                                filename,
-                                path.display(),
-                                error
-                            );
-                            None
-                        },
-                        |i| Some(Texture::Image(Arc::new(i))),
-                    )
-                } else {
-                    None
-                };
 
+        let material = if mat.transparent_color.length() > 0.0 {
+            Material::Dielectric {
+                index_of_refraction: mat.index_of_refraction,
+                fuzz,
+                displacement_map,
+                displacement_strength: mat.displacement_strength,
+            }
+        } else {
             if mat.reflective_color.length() > 0.0 {
                 Material::Metallic {
                     albedo,
                     fuzz,
                     normal_map,
+                    displacement_map,
+                    displacement_strength: mat.displacement_strength,
                 }
             } else {
-                Material::Lambertian { albedo, normal_map }
+                Material::Lambertian {
+                    albedo,
+                    normal_map,
+                    displacement_map,
+                    displacement_strength: mat.displacement_strength,
+                }
             }
         };
 
@@ -128,6 +157,8 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
         materials.push(Material::Lambertian {
             albedo: Texture::SolidColor(Vec3A::splat(0.5)),
             normal_map: None,
+            displacement_map: None,
+            displacement_strength: 0.0,
         });
         warn!("No materials found, using default");
     }
@@ -154,6 +185,9 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                 tex_xy_0,
                 tex_xy_1,
                 tex_xy_2,
+                normal0,
+                normal1,
+                normal2,
                 material_index,
             } => {
                 let material = if material_index < materials.len() {
@@ -163,8 +197,72 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                 };
 
                 HittableObject::Triangle(Triangle::new(
-                    vertex0, vertex1, vertex2, tex_xy_0, tex_xy_1, tex_xy_2, material,
+                    vertex0, vertex1, vertex2, tex_xy_0, tex_xy_1, tex_xy_2, normal0, normal1,
+                    normal2, material,
                 ))
+            }
+            file_format::Object::Mesh {
+                filename,
+                material_index,
+            } => {
+                let _material = if material_index < materials.len() {
+                    materials[material_index].clone()
+                } else {
+                    materials[0].clone()
+                };
+
+                // Placeholder for OBJ loading. This will be implemented later.
+                // For now, return an empty mesh or handle as an error.
+                warn!("OBJ loading not yet implemented. Returning an empty mesh for {}", filename);
+                HittableObject::Mesh(crate::hittable::mesh::Mesh::new(vec![]))
+            }
+            file_format::Object::Cylinder {
+                center,
+                radius,
+                height,
+                material_index,
+            } => {
+                let material = if material_index < materials.len() {
+                    materials[material_index].clone()
+                } else {
+                    materials[0].clone()
+                };
+
+                // Define a default number of segments for cylinder tessellation
+                let segments = 32;
+
+                let initial_triangles =
+                    crate::hittable::mesh::Mesh::generate_cylinder_triangles(
+                        center, radius, height, segments, material.clone(),
+                    );
+
+                let mut final_triangles = Vec::new();
+                let subdivision_level = 2; // Hardcoded subdivision level for now
+
+                for tri in initial_triangles {
+                    let material_from_tri = &tri.material; // Get reference to material
+
+                    let displacement_strength_from_material = match material_from_tri {
+                        crate::material::Material::Lambertian { displacement_strength, .. } => *displacement_strength,
+                        crate::material::Material::Metallic { displacement_strength, .. } => *displacement_strength,
+                        crate::material::Material::Dielectric { displacement_strength, .. } => *displacement_strength,
+                        crate::material::Material::Emissive { .. } => 0.0, // Emissive materials don't displace
+                    };
+
+                    if material_from_tri.has_displacement_map() {
+                        let tessellated = tessellator::tessellate_triangle(
+                            &tri,
+                            subdivision_level,
+                            material_from_tri,
+                            displacement_strength_from_material,
+                        );
+                        final_triangles.extend(tessellated);
+                    } else {
+                        final_triangles.push(tri);
+                    }
+                }
+
+                HittableObject::Mesh(crate::hittable::mesh::Mesh::new(final_triangles))
             }
         };
 

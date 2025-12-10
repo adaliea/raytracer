@@ -1,14 +1,19 @@
 use crate::hittable::sphere::Sphere;
+use crate::hittable::triangle::Triangle;
+use crate::hittable::mesh::Mesh;
 use crate::material::Material;
 use crate::ray::Ray;
 use bvh::aabb::Bounded;
 use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use std::fmt::Debug;
-use triangle::Triangle;
+
+
 
 pub mod sphere;
 pub mod triangle;
+pub mod mesh;
+pub mod tessellator;
 
 #[allow(dead_code)]
 pub struct HitRecord<'a> {
@@ -61,6 +66,7 @@ pub trait Hittable: Send + Sync {
 pub enum HittableObject {
     Sphere(Sphere),
     Triangle(Triangle),
+    Mesh(Mesh),
 }
 
 impl Hittable for HittableObject {
@@ -69,6 +75,7 @@ impl Hittable for HittableObject {
         match self {
             HittableObject::Sphere(s) => s.hit(r, t_min, t_max),
             HittableObject::Triangle(t) => t.hit(r, t_min, t_max),
+            HittableObject::Mesh(m) => m.hit(r, t_min, t_max),
         }
     }
 }
@@ -79,6 +86,7 @@ impl Bounded<f32, 3> for HittableObject {
         match self {
             HittableObject::Sphere(s) => s.aabb(),
             HittableObject::Triangle(t) => t.aabb(),
+            HittableObject::Mesh(m) => m.aabb(),
         }
     }
 }
@@ -88,6 +96,7 @@ impl BHShape<f32, 3> for HittableObject {
         match self {
             HittableObject::Sphere(s) => s.set_bh_node_index(index),
             HittableObject::Triangle(t) => t.set_bh_node_index(index),
+            HittableObject::Mesh(m) => m.set_bh_node_index(index),
         }
     }
 
@@ -96,6 +105,7 @@ impl BHShape<f32, 3> for HittableObject {
         match self {
             HittableObject::Sphere(s) => s.bh_node_index(),
             HittableObject::Triangle(t) => t.bh_node_index(),
+            HittableObject::Mesh(m) => m.bh_node_index(),
         }
     }
 }

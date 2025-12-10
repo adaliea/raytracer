@@ -56,7 +56,7 @@ pub fn ray_color(
                 };
             }
 
-            Material::Lambertian { albedo, normal_map } => {
+            Material::Lambertian { albedo, normal_map, displacement_map: _, displacement_strength: _ } => {
                 let attenuation = albedo.sample(&rec.uv);
                 let shading_normal = get_perturbed_normal(normal_map, &rec);
 
@@ -94,6 +94,8 @@ pub fn ray_color(
                 albedo,
                 fuzz,
                 normal_map,
+                displacement_map: _,
+                displacement_strength: _,
             } => {
                 let attenuation = albedo.sample(&rec.uv);
                 let shading_normal = get_perturbed_normal(normal_map, &rec);
@@ -126,6 +128,8 @@ pub fn ray_color(
             Material::Dielectric {
                 index_of_refraction,
                 fuzz,
+                displacement_map: _,
+                displacement_strength: _,
             } => {
                 let attenuation = Vec3A::ONE; // Dielectrics are white
                 // Dielectrics do not use normal mapping in this implementation
