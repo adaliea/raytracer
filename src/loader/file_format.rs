@@ -32,6 +32,8 @@ pub struct Material {
     pub transparent_color: Vec3A,
     pub index_of_refraction: f32,
     pub displacement_strength: f32,
+    pub subdivision_level: Option<u32>,
+    pub max_edge_length: Option<f32>,
 }
 
 #[derive(Debug)]

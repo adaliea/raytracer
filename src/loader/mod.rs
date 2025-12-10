@@ -130,6 +130,8 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                 fuzz,
                 displacement_map,
                 displacement_strength: mat.displacement_strength,
+                subdivision_level: mat.subdivision_level,
+                max_edge_length: mat.max_edge_length,
             }
         } else {
             if mat.reflective_color.length() > 0.0 {
@@ -139,6 +141,8 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                     normal_map,
                     displacement_map,
                     displacement_strength: mat.displacement_strength,
+                    subdivision_level: mat.subdivision_level,
+                    max_edge_length: mat.max_edge_length,
                 }
             } else {
                 Material::Lambertian {
@@ -146,6 +150,8 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                     normal_map,
                     displacement_map,
                     displacement_strength: mat.displacement_strength,
+                    subdivision_level: mat.subdivision_level,
+                    max_edge_length: mat.max_edge_length,
                 }
             }
         };
@@ -159,6 +165,8 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
             normal_map: None,
             displacement_map: None,
             displacement_strength: 0.0,
+            subdivision_level: None,
+            max_edge_length: None,
         });
         warn!("No materials found, using default");
     }
@@ -196,10 +204,30 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                     materials[0].clone()
                 };
 
-                HittableObject::Triangle(Triangle::new(
+                let triangle = Triangle::new(
                     vertex0, vertex1, vertex2, tex_xy_0, tex_xy_1, tex_xy_2, normal0, normal1,
-                    normal2, material,
-                ))
+                    normal2, material.clone(),
+                );
+
+                if material.has_displacement_map() {
+                    let (subdivision_level, max_edge_length, displacement_strength) = match &material {
+                        Material::Lambertian { subdivision_level, max_edge_length, displacement_strength, .. } => (*subdivision_level, *max_edge_length, *displacement_strength),
+                        Material::Metallic { subdivision_level, max_edge_length, displacement_strength, .. } => (*subdivision_level, *max_edge_length, *displacement_strength),
+                        Material::Dielectric { subdivision_level, max_edge_length, displacement_strength, .. } => (*subdivision_level, *max_edge_length, *displacement_strength),
+                        Material::Emissive { .. } => (None, None, 0.0),
+                    };
+
+                    let tessellated_triangles = tessellator::tessellate_triangle(
+                        &triangle,
+                        subdivision_level,
+                        max_edge_length,
+                        &material,
+                        displacement_strength,
+                    );
+                    HittableObject::Mesh(crate::hittable::mesh::Mesh::new(tessellated_triangles))
+                } else {
+                    HittableObject::Triangle(triangle)
+                }
             }
             file_format::Object::Mesh {
                 filename,
@@ -237,24 +265,24 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
                     );
 
                 let mut final_triangles = Vec::new();
-                let subdivision_level = 2; // Hardcoded subdivision level for now
+                
+                let (subdivision_level, max_edge_length, displacement_strength) = match &material {
+                    Material::Lambertian { subdivision_level, max_edge_length, displacement_strength, .. } => (*subdivision_level, *max_edge_length, *displacement_strength),
+                    Material::Metallic { subdivision_level, max_edge_length, displacement_strength, .. } => (*subdivision_level, *max_edge_length, *displacement_strength),
+                    Material::Dielectric { subdivision_level, max_edge_length, displacement_strength, .. } => (*subdivision_level, *max_edge_length, *displacement_strength),
+                    Material::Emissive { .. } => (None, None, 0.0),
+                };
 
                 for tri in initial_triangles {
-                    let material_from_tri = &tri.material; // Get reference to material
-
-                    let displacement_strength_from_material = match material_from_tri {
-                        crate::material::Material::Lambertian { displacement_strength, .. } => *displacement_strength,
-                        crate::material::Material::Metallic { displacement_strength, .. } => *displacement_strength,
-                        crate::material::Material::Dielectric { displacement_strength, .. } => *displacement_strength,
-                        crate::material::Material::Emissive { .. } => 0.0, // Emissive materials don't displace
-                    };
+                    let material_from_tri = &tri.material;
 
                     if material_from_tri.has_displacement_map() {
                         let tessellated = tessellator::tessellate_triangle(
                             &tri,
                             subdivision_level,
+                            max_edge_length,
                             material_from_tri,
-                            displacement_strength_from_material,
+                            displacement_strength,
                         );
                         final_triangles.extend(tessellated);
                     } else {

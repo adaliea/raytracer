@@ -14,6 +14,8 @@ pub enum Material {
         normal_map: Option<Texture>,
         displacement_map: Option<Texture>,
         displacement_strength: f32,
+        subdivision_level: Option<u32>,
+        max_edge_length: Option<f32>,
     },
 
     /// A shiny, reflective surface (e.g., metal, polished chrome).
@@ -26,6 +28,8 @@ pub enum Material {
         /// How "fuzzy" or rough the reflection is (0.0 = perfect mirror)
         fuzz: f32,
         displacement_strength: f32,
+        subdivision_level: Option<u32>,
+        max_edge_length: Option<f32>,
     },
 
     /// A transparent, refractive surface (e.g., glass, water).
@@ -36,6 +40,8 @@ pub enum Material {
         fuzz: f32,
         displacement_map: Option<Texture>,
         displacement_strength: f32,
+        subdivision_level: Option<u32>,
+        max_edge_length: Option<f32>,
     },
 
     /// A surface that emits light.

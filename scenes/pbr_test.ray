@@ -1,0 +1,70 @@
+
+# A scene to test PBR materials and displacement mapping
+
+Background {
+    color 0.8 0.9 1.0
+    ambientLight 0.1 0.1 0.1
+}
+
+Camera {
+    eye -4 2 8
+    lookAt 0 0 0
+    up 0 1 0
+    fovy 25
+}
+
+Lights {
+    Light {
+        position -10 10 10
+        color 3 3 3
+    }
+}
+
+Materials {
+    # Cobblestone material for the ground plane
+    Material {
+        textureFilename textures/cobblestone_pavement/cobblestone_pavement_diff_2k.jpg
+        displacementMapFilename textures/cobblestone_pavement/cobblestone_pavement_disp_2k.png
+        displacementStrength 1
+        shininess 10
+        maxEdgeLength 0.05
+    }
+    
+    # Whitewashed brick for the cylinder
+    Material {
+        textureFilename textures/whitewashed_brick/whitewashed_brick_diff_2k.jpg
+        displacementMapFilename textures/whitewashed_brick/whitewashed_brick_disp_2k.png
+        displacementStrength 0.4
+        shininess 20
+    }
+}
+
+Group {
+    # Ground plane (as two triangles)
+    Triangle {
+        vertex0 -10 0 10
+        vertex1 10 0 10
+        vertex2 -10 0 -10
+        tex_xy_0 0 2
+        tex_xy_1 2 2
+        tex_xy_2 0 0
+        materialIndex 0
+    }
+    Triangle {
+        vertex0 10 0 -10
+        vertex1 -10 0 -10
+        vertex2 10 0 10
+        tex_xy_0 2 0
+        tex_xy_1 0 0
+        tex_xy_2 2 2
+        materialIndex 0
+    }
+    
+    # Cylinder
+    Cylinder {
+        center 0 1 0
+        radius 1
+        height 2
+        materialIndex 1
+    }
+}

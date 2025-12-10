@@ -207,6 +207,15 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
                 tokens.next();
                 material.displacement_strength = parse_f32(tokens);
             }
+            "subdivisionLevel" => {
+                tokens.next();
+                material.subdivision_level = Some(parse_u32(tokens));
+            }
+
+            "maxEdgeLength" => {
+                tokens.next();
+                material.max_edge_length = Some(parse_f32(tokens));
+            }
             "}" => {
                 tokens.next();
                 break;
@@ -462,6 +471,10 @@ fn parse_f32<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> f32 {
 }
 
 fn parse_usize<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> usize {
+    tokens.next().unwrap().parse().unwrap()
+}
+
+fn parse_u32<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> u32 {
     tokens.next().unwrap().parse().unwrap()
 }
 

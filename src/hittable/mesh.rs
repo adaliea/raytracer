@@ -68,33 +68,23 @@ impl Mesh {
             let uv11 = Vec2::new(uv_x1, uv_y_top);
 
             // Side surface (two triangles per segment)
-            // Triangle 1: v0_bottom, v1_top, v0_top
-            let normal_side1 = (v1_top - v0_bottom).cross(v0_top - v0_bottom).normalize();
+            // Calculate smooth normals for the vertices on the cylinder side
+            let normal_v0 = (v0_top - top_center).normalize();
+            let normal_v1 = (v1_top - top_center).normalize();
+
+            // Triangle 1: (v0_bottom, v0_top, v1_top)
             triangles.push(Triangle::new(
-                v0_bottom,
-                v1_top,
-                v0_top,
-                uv00,
-                uv11,
-                uv10,
-                normal_side1,
-                normal_side1,
-                normal_side1, // Per-vertex normals for now are just face normal
+                v0_bottom, v0_top, v1_top,
+                uv00, uv10, uv11,
+                normal_v0, normal_v0, normal_v1,
                 material.clone(),
             ));
 
-            // Triangle 2: v0_bottom, v1_bottom, v1_top
-            let normal_side2 = (v1_bottom - v0_bottom).cross(v1_top - v0_bottom).normalize();
+            // Triangle 2: (v0_bottom, v1_top, v1_bottom)
             triangles.push(Triangle::new(
-                v0_bottom,
-                v1_bottom,
-                v1_top,
-                uv00,
-                uv01,
-                uv11,
-                normal_side2,
-                normal_side2,
-                normal_side2, // Per-vertex normals for now are just face normal
+                v0_bottom, v1_top, v1_bottom,
+                uv00, uv11, uv01,
+                normal_v0, normal_v1, normal_v1,
                 material.clone(),
             ));
 
