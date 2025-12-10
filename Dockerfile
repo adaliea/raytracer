@@ -14,6 +14,8 @@ ARG OIDN_URL=https://github.com/RenderKit/oidn/releases/download/v2.3.3/oidn-2.3
 WORKDIR /opt
 RUN curl -L ${OIDN_URL} | tar -xz
 
+ENV LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
+
 # Set up Rust build area
 WORKDIR /usr/src/app
 
