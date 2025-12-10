@@ -13,5 +13,9 @@
       ]
     }
   },
+  "containerEnv": {
+    "CARGO_HOME": "/home/vscode/.cargo",
+    "RUSTUP_HOME": "/home/vscode/.rustup"
+  },
   "remoteUser": "vscode"
 }

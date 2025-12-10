@@ -3,9 +3,7 @@
 FROM rust:1.91-slim as builder
 
 # Install the nightly toolchain and build dependencies
-RUN rustup toolchain install nightly && \
-    rustup default nightly && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y curl tar && \
     rm -rf /var/lib/apt/lists/*
 
@@ -15,6 +13,21 @@ WORKDIR /opt
 RUN curl -L ${OIDN_URL} | tar -xz
 
 ENV LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
+
+# Create a non-root user for development to avoid permission issues
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid $USER_GID $USERNAME && \
+    useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME && \
+    mkdir -p /etc/sudoers.d && \
+    echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
+    chmod 0440 /etc/sudoers.d/$USERNAME
+
+USER $USERNAME
+
+RUN rustup toolchain install nightly && \
+        rustup default nightly
 
 # Set up Rust build area
 WORKDIR /usr/src/app
@@ -50,6 +63,18 @@ COPY --from=builder /opt/oidn-2.3.3.x86_64.linux/lib /usr/local/lib
 
 # Update the linker cache to include the new libraries
 RUN ldconfig
+
+# Create a non-root user for development to avoid permission issues
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid $USER_GID $USERNAME && \
+    useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME && \
+    mkdir -p /etc/sudoers.d && \
+    echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
+    chmod 0440 /etc/sudoers.d/$USERNAME
+
+USER $USERNAME
 
 # Copy the application binary from the builder stage
 COPY --from=builder /usr/src/app/target/release/raytracer /usr/local/bin/raytracer

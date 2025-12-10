@@ -25,12 +25,13 @@ RUN groupadd --gid $USER_GID $USERNAME && \
     echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
+# Switch to the non-root user
 USER $USERNAME
 
+ENV PATH="/home/vscode/.cargo/bin:${PATH}"
 
 RUN rustup toolchain install nightly && \
     rustup default nightly
 
 # Set up environment variables for OIDN
 ENV LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
-# Switch to the non-root user
