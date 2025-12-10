@@ -48,7 +48,7 @@ impl RenderParameters {
         }
     }
 }
-pub fn render_hdr(params: RenderParameters, scene: Scene) -> Vec<f32> {
+pub fn render_hdr(params: RenderParameters, scene: Scene) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
     // Image
     let time = Instant::now();
     info!(
@@ -70,18 +70,27 @@ pub fn render_hdr(params: RenderParameters, scene: Scene) -> Vec<f32> {
     // Render
     let mut hdr_buffer =
         vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
+    let mut albedo_buffer =
+        vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
+    let mut normal_buffer =
+        vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
+
 
     let total_rays = AtomicU64::new(0);
     // parallelizes per image row
     hdr_buffer
         .par_iter_mut()
+        .zip(albedo_buffer.par_iter_mut())
+        .zip(normal_buffer.par_iter_mut())
         .enumerate()
-        .for_each(|(i, pixel)| {
+        .for_each(|(i, ((hdr_pixel, albedo_pixel), normal_pixel))| {
             let x = i as u32 % params.image_width;
             let y = i as u32 / params.image_width;
 
             let mut rng = rand::rng();
-            let mut color = Vec3A::ZERO;
+            let mut total_color = Vec3A::ZERO;
+            let mut total_albedo = Vec3A::ZERO;
+            let mut total_normal = Vec3A::ZERO;
             let mut rays = 0;
             for _ in 0..params.samples_per_pixel {
                 let u = (x as f32 + rng.random::<f32>() - 0.5) / (params.image_width - 1) as f32;
@@ -98,10 +107,15 @@ pub fn render_hdr(params: RenderParameters, scene: Scene) -> Vec<f32> {
                     true,
                     &mut rng,
                 );
-                color += trace.color;
+                total_color += trace.color;
+                total_albedo += trace.albedo;
+                total_normal += trace.normal;
                 rays += trace.rays;
             }
-            *pixel = color / params.samples_per_pixel as f32;
+            *hdr_pixel = total_color / params.samples_per_pixel as f32;
+            *albedo_pixel = total_albedo / params.samples_per_pixel as f32;
+            *normal_pixel = total_normal / params.samples_per_pixel as f32;
+
 
             bar.inc(1);
             total_rays.fetch_add(rays, Ordering::Relaxed);
@@ -120,7 +134,10 @@ pub fn render_hdr(params: RenderParameters, scene: Scene) -> Vec<f32> {
     );
 
     // Flatten the buffer of Vec3A to a Vec<f32> for OIDN
-    hdr_buffer.into_iter().flat_map(|v| v.to_array()).collect()
+    let flat_hdr = hdr_buffer.into_iter().flat_map(|v| v.to_array()).collect();
+    let flat_albedo = albedo_buffer.into_iter().flat_map(|v| v.to_array()).collect();
+    let flat_normal = normal_buffer.into_iter().flat_map(|v| v.to_array()).collect();
+    (flat_hdr, flat_albedo, flat_normal)
 }
 
 pub fn save_hdr_image(
@@ -128,7 +145,9 @@ pub fn save_hdr_image(
     width: u32,
     height: u32,
     scene_path: &Path,
-    suffix: &str, // e.g., "_noisy", "_denoised"
+    suffix: &str,
+    is_aov: bool,
+    is_normal: bool,
 ) -> ImageResult<()> {
     let path = Path::new(scene_path);
     let filename = path.file_stem().unwrap().to_str().unwrap();
@@ -149,8 +168,15 @@ pub fn save_hdr_image(
 
             let mut color = Vec3A::new(r_hdr, g_hdr, b_hdr);
 
-            // Basic tone mapping
-            color = color / (color + Vec3A::splat(1.0));
+            if is_normal {
+                // Remap normals from [-1, 1] to [0, 1] for saving
+                color = color * 0.5 + 0.5;
+            }
+
+            if !is_aov {
+                // Basic tone mapping
+                color = color / (color + Vec3A::splat(1.0));
+            }
 
             // Gamma correction
             color = color.powf(1.0 / 2.2);
@@ -180,7 +206,29 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
 
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
     let scene = load_scene(path, params.aspect_ratio)?;
-    let rendered_hdr_data = render_hdr(params, scene);
+    let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
+
+    // Save albedo AOV for debugging
+    save_hdr_image(
+        &albedo_data,
+        params.image_width,
+        params.image_height,
+        path,
+        "_albedo",
+        true,
+        false,
+    )?;
+
+    // Save normal AOV for debugging
+    save_hdr_image(
+        &normal_data,
+        params.image_width,
+        params.image_height,
+        path,
+        "_normal",
+        true,
+        true,
+    )?;
 
     // Save noisy HDR image (after sRGB conversion)
     save_hdr_image(
@@ -189,6 +237,8 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
         params.image_height,
         path,
         "_noisy",
+        false,
+        false,
     )?;
 
     // Denoise with OIDN
@@ -198,9 +248,9 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
     oidn::RayTracing::new(&mut device)
         .image_dimensions(params.image_width as usize, params.image_height as usize)
         .hdr(true)
+        .albedo_normal(&albedo_data, &normal_data)
         .filter(&rendered_hdr_data, &mut denoised_hdr_data)
         .map_err(|e| format!("{:?}", e))?;
-
 
     // Save denoised HDR image (after sRGB conversion)
     save_hdr_image(
@@ -209,6 +259,8 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
         params.image_height,
         path,
         "", // No suffix for the final denoised image
+        false,
+        false,
     )
     .map_err(Box::from)
 }

@@ -9,6 +9,8 @@ use rand_distr::{Distribution, UnitSphere};
 
 pub struct TraceResult {
     pub color: Vec3A,
+    pub albedo: Vec3A,
+    pub normal: Vec3A,
     /// How many ray intersection tests occurred
     pub rays: u64,
 }
@@ -24,6 +26,8 @@ pub fn ray_color(
     if depth == 0 {
         return TraceResult {
             color: Vec3A::ZERO,
+            albedo: Vec3A::ZERO,
+            normal: Vec3A::ZERO,
             rays: 0,
         };
     }
@@ -38,11 +42,15 @@ pub fn ray_color(
                 return if depth == max_bounces || is_specular_ray {
                     TraceResult {
                         color: emit,
+                        albedo: Vec3A::ZERO, // Emissive surfaces have no albedo
+                        normal: Vec3A::ZERO, // Or normal
                         rays: 1,
                     } // It's a camera ray, return the light
                 } else {
                     TraceResult {
                         color: Vec3A::ZERO,
+                        albedo: Vec3A::ZERO,
+                        normal: Vec3A::ZERO,
                         rays: 1,
                     } // It's an indirect bounce, don't double-count.
                 };
@@ -57,7 +65,12 @@ pub fn ray_color(
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
                 if depth < (max_bounces - 5) && rand::random::<f32>() > probability {
-                    return direct_trace;
+                    return TraceResult {
+                        color: direct_trace.color,
+                        albedo: attenuation,
+                        normal: rec.normal,
+                        rays: direct_trace.rays,
+                    };
                 }
 
                 let scatter_direction = rec.normal + random_on_unit_sphere(rng);
@@ -71,6 +84,8 @@ pub fn ray_color(
 
                 TraceResult {
                     color: direct_trace.color + indirect_light,
+                    albedo: attenuation,
+                    normal: rec.normal,
                     rays: indirect_trace.rays + direct_trace.rays + 1,
                 }
             }
@@ -90,11 +105,15 @@ pub fn ray_color(
                 if scattered_ray.direction.dot(rec.normal) > 0.0 {
                     TraceResult {
                         color: attenuation * reflected_trace.color,
+                        albedo: attenuation,
+                        normal: rec.normal,
                         rays: reflected_trace.rays + 1,
                     }
                 } else {
                     TraceResult {
                         color: Vec3A::ZERO,
+                        albedo: attenuation,
+                        normal: rec.normal,
                         rays: reflected_trace.rays + 1,
                     }
                 }
@@ -104,7 +123,7 @@ pub fn ray_color(
                 index_of_refraction,
                 fuzz,
             } => {
-                let attenuation = Vec3A::ONE;
+                let attenuation = Vec3A::ONE; // Dielectrics are white
 
                 let refraction_ratio = if rec.front_face {
                     1.0 / index_of_refraction
@@ -134,6 +153,8 @@ pub fn ray_color(
                     ray_color(&scattered_ray, world, depth - 1, max_bounces, true, rng);
                 TraceResult {
                     color: attenuation * scattered_trace.color,
+                    albedo: attenuation,
+                    normal: rec.normal,
                     rays: scattered_trace.rays + 1,
                 }
             }
@@ -142,6 +163,8 @@ pub fn ray_color(
 
     TraceResult {
         color: world.background_color,
+        albedo: Vec3A::ZERO,
+        normal: Vec3A::ZERO,
         rays: 1,
     }
 }
@@ -162,6 +185,8 @@ fn sample_direct_light(
     if total_samples == 0 {
         return TraceResult {
             color: Vec3A::ZERO,
+            albedo: Vec3A::ZERO,
+            normal: Vec3A::ZERO,
             rays: 0,
         };
     }
@@ -216,6 +241,8 @@ fn sample_direct_light(
 
     TraceResult {
         color: total_direct_light,
+        albedo: Vec3A::ZERO,
+        normal: Vec3A::ZERO,
         rays: total_samples as u64,
     }
 }
