@@ -56,9 +56,9 @@ impl Texture {
                 let uv = uv.get_uv();
 
                 // Use clamp to prevent out of bounds access
-                let u = uv.x.clamp(0.0, 1.0);
+                let u = uv.x.rem_euclid(1.0);
                 // Flip v for image coords
-                let v = 1.0 - uv.y.clamp(0.0, 1.0);
+                let v = 1.0 - uv.y.rem_euclid(1.0);
 
                 let x = (u * (image.width() - 1) as f32) as u32;
                 let y = (v * (image.height() - 1) as f32) as u32;
