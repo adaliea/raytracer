@@ -1,0 +1,18 @@
+# Ignore git repository
+.git
+
+# Ignore build artifacts
+target
+
+# Ignore generated output
+output
+
+# Ignore IDE configuration
+.idea
+
+# Ignore local testing files
+flamegraph.svg
+*.png
+*.jpg
+*.ray
+scenes/

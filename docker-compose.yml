@@ -1,0 +1,41 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        USER_UID: "${USER_UID:-1000}"
+        USER_GID: "${USER_GID:-1000}"
+    environment:
+      - OIDN_DIR=/opt/oidn-2.3.3.x86_64.linux
+      - LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
+      - LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LIBRARY_PATH}
+    volumes:
+      - .:/workspace:cached
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/workspace/target
+    working_dir: /workspace
+    command: sleep infinity
+
+  test-render:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    environment:
+      - OIDN_DIR=/opt/oidn-2.3.3.x86_64.linux
+      - LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
+      - LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LIBRARY_PATH}
+    volumes:
+      - .:/workspace:cached
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/workspace/target
+    working_dir: /workspace
+    user: root
+    command: >
+      sh -c "
+        cargo run --release -- --scene-path scenes/singleSphereLighted.ray --width 50 --height 50 --samples 100
+      "
+
+volumes:
+  cargo-cache:
+  target-cache:
