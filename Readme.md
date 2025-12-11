@@ -31,6 +31,10 @@ Located in `target/release/raytracer` or `target/x86_64-pc-windows-gnu/release/r
 
 Use `--help` to see the help menu.
 
+# Notes:
+- Some .exr compression formats may not be supported by the image decoder.
+  - The python script in `scenes/textures` can convert them to a format supported by this project
+
 
 # Extra Credit Work
 - Denoising with OIDN (Open Image Denoise)

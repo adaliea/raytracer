@@ -38,11 +38,6 @@ Materials {
         shininess 20
         subdivisionLevel 4
     }
-
-    # Emissive material for debugging
-    Material {
-        emissiveColor 10.0 0.0 0.0
-    }
 }
 
 Group {
