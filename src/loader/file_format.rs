@@ -34,6 +34,7 @@ pub struct Material {
     pub displacement_strength: f32,
     pub subdivision_level: Option<u32>,
     pub max_edge_length: Option<f32>,
+    pub emissive_color: Option<Vec3A>,
 }
 
 #[derive(Debug)]

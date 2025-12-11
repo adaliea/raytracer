@@ -3,6 +3,7 @@ use crate::hittable::{HitRecord, Hittable, HittableObject};
 use crate::ray::Ray;
 use bvh::bvh::Bvh;
 use glam::Vec3A;
+use nalgebra::{Point3, Vector3};
 
 #[derive(Debug, Clone)]
 pub struct Scene {
@@ -19,12 +20,12 @@ impl Hittable for Scene {
         let mut closest_so_far = t_max;
         let mut hit_anything = None;
 
-        // let bvh_ray = bvh::ray::Ray::new(
-        //     Point3::new(r.origin.x, r.origin.y, r.origin.z),
-        //     Vector3::new(r.direction.x, r.direction.y, r.direction.z),
-        // );
-        // let hit_objs = self.bvh.traverse(&bvh_ray, &self.objects);
-        for object in &self.objects {
+        let bvh_ray = bvh::ray::Ray::new(
+            Point3::new(r.origin.x, r.origin.y, r.origin.z),
+            Vector3::new(r.direction.x, r.direction.y, r.direction.z),
+        );
+        let hit_objs = self.bvh.traverse(&bvh_ray, &self.objects);
+        for object in hit_objs {
             if let Some(rec) = object.hit(r, t_min, closest_so_far) {
                 closest_so_far = rec.t;
                 hit_anything = Some(rec);
