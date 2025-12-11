@@ -230,7 +230,7 @@ fn sample_direct_light(
                 let shadow_ray = Ray::new(rec.p, shadow_dir);
 
                 // Check if the ray is occluded
-                let shadow_ray_rec = world.hit(&shadow_ray, 0.001, f32::INFINITY);
+                let shadow_ray_rec = world.hit(&shadow_ray, 0.00001, f32::INFINITY);
 
                 if shadow_ray_rec
                     .map(|r| r.bh_object_index == light_sphere.bh_node_index())
