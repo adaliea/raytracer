@@ -275,8 +275,9 @@ fn denoise(params: RenderParameters,
 }
 
 #[cfg(not(feature = "denoise"))]
-fn denoise(params: RenderParameters,
-           path: &Path,
-           rendered_hdr_data: Vec<f32>, albedo_data: Vec<f32>, normal_data:  Vec<f32>) -> Result<(), Box<dyn Error>> {
-    warn!("Skipping final image generation: OIDN generation is disabled");
+fn denoise(_params: RenderParameters,
+           _path: &Path,
+           _rendered_hdr_data: Vec<f32>, _albedo_data: Vec<f32>, _normal_data:  Vec<f32>) -> Result<(), Box<dyn Error>> {
+    warn!("Skipping final image generation: Denoising is disabled");
+    Ok(())
 }
