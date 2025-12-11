@@ -12,7 +12,9 @@ use crate::tracer::ray_color;
 use glam::Vec3A;
 use image::{ImageBuffer, ImageResult, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
-use log::info;
+use log::{info};
+#[cfg(not(feature = "denoise"))]
+use log::warn;
 use rand::Rng;
 use rayon::prelude::*;
 use std::error::Error;
@@ -20,6 +22,8 @@ use std::fs::create_dir;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
+
+
 
 #[derive(Debug, Copy, Clone)]
 
@@ -241,6 +245,12 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
         false,
     )?;
 
+    denoise(params, path, rendered_hdr_data, albedo_data, normal_data)
+}
+#[cfg(feature = "denoise")]
+fn denoise(params: RenderParameters,
+           path: &Path,
+           rendered_hdr_data: Vec<f32>, albedo_data: Vec<f32>, normal_data:  Vec<f32>) -> Result<(), Box<dyn Error>> {
     // Denoise with OIDN
     info!("Denoising image with OIDN...");
     let mut denoised_hdr_data = vec![0.0; rendered_hdr_data.len()];
@@ -261,6 +271,12 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
         "", // No suffix for the final denoised image
         false,
         false,
-    )
-    .map_err(Box::from)
+    ).map_err(Box::from)
+}
+
+#[cfg(not(feature = "denoise"))]
+fn denoise(params: RenderParameters,
+           path: &Path,
+           rendered_hdr_data: Vec<f32>, albedo_data: Vec<f32>, normal_data:  Vec<f32>) -> Result<(), Box<dyn Error>> {
+    warn!("Skipping final image generation: OIDN generation is disabled");
 }

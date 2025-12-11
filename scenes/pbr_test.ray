@@ -36,7 +36,8 @@ Materials {
         normalMapFilename textures/whitewashed_brick/whitewashed_brick_nor_gl_2k.exr
         displacementStrength 0.1
         shininess 20
-        subdivisionLevel 4
+        maxEdgeLength 0.5
+
     }
 }
 
