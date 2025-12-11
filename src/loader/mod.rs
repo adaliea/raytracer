@@ -71,7 +71,9 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
         } else {
             let displacement_map = mat.displacement_map_filename.as_ref().and_then(|filename| {
                 if filename != "NULL" {
-                    load_texture(Path::new(filename), path).map(|i| Texture::Image(Arc::new(i))).ok()
+                    load_texture(Path::new(filename), path).map(|i| Texture::Image(Arc::new(i))).inspect_err(
+                        |e| warn!("Failed to load displacement map: {}, error: {:?}", filename, e)
+                    ).ok()
                 } else { None }
             });
 
@@ -87,7 +89,9 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
             } else {
                 let albedo = mat.texture_filename.as_ref().and_then(|filename| {
                     if filename != "NULL" {
-                        load_texture(Path::new(filename), path).map(|i| Texture::Image(Arc::new(i))).ok()
+                        load_texture(Path::new(filename), path).map(|i| Texture::Image(Arc::new(i))).inspect_err(
+                            |e| warn!("Failed to load texture: {}, error: {:?}", filename, e)
+                        ).ok()
                     } else { None }
                 }).unwrap_or_else(|| {
                     if mat.reflective_color.length() > 0.0 {
@@ -99,7 +103,9 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
 
                 let normal_map = mat.normal_map_filename.as_ref().and_then(|filename| {
                     if filename != "NULL" {
-                        load_texture(Path::new(filename), path).map(|i| Texture::Image(Arc::new(i))).ok()
+                        load_texture(Path::new(filename), path).map(|i| Texture::Image(Arc::new(i))).inspect_err(
+                            |e| warn!("Failed to load normal map: {}, error: {:?}", filename, e)
+                        ).ok()
                     } else { None }
                 });
 
