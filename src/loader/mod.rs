@@ -16,7 +16,8 @@ use image::{ImageError, Rgb32FImage};
 use log::{info, warn};
 use std::error::Error;
 use std::fs;
-use std::path::Path;
+use std::iter::{once, Peekable};
+use std::path::{Iter, Path};
 use std::sync::Arc;
 use crate::loader::shapes::generate_cylinder_triangles;
 
@@ -45,7 +46,7 @@ fn load_texture(texture_path: &Path, scene_path: &Path) -> Result<Rgb32FImage, I
     img.map(|i| i.to_rgb32f())
 }
 
-pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error>> {
+pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Peekable<Box<dyn ExactSizeIterator<Item=Scene>>>, Box<dyn Error>> {
     let contents = fs::read_to_string(path)?;
     let file_scene = parser::parse_ray_file(&contents);
 
@@ -308,5 +309,5 @@ pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error
 
     //debug!("Loaded scene: {:?}", scene);
 
-    Ok(scene)
+    Ok((Box::new(once(scene)) as Box<dyn ExactSizeIterator<Item=_>>).peekable())
 }

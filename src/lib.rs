@@ -19,7 +19,8 @@ use rand::Rng;
 use rayon::prelude::*;
 use std::error::Error;
 use std::fs::create_dir;
-use std::path::Path;
+use std::iter::Peekable;
+use std::path::{Path};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -199,53 +200,60 @@ pub fn save_hdr_image(
     img_buffer.save(format!("output/{}{}.png", filename, suffix))
 }
 
-pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Scene, Box<dyn Error>> {
+pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Peekable<Box< dyn ExactSizeIterator<Item=Scene>>>, Box<dyn Error>> {
     info!("Loading scene from {:?}", path);
 
     // Scene
-    let scene = loader::load_scene(path, aspect_ratio)?;
-    info!("Loaded scene with {} objects", scene.objects.len());
+    let mut scene = loader::load_scene(path, aspect_ratio)?;
+    if let Some(first_frame) =  scene.peek() {
+        info!("Loaded scene with {} objects and {} frames", first_frame.objects.len(), scene.len());
+    } else {
+        return Err(From::from("No scene found"));
+    }
     Ok(scene)
 }
 
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
-    let scene = load_scene(path, params.aspect_ratio)?;
-    let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
+    let frames = load_scene(path, params.aspect_ratio)?;
+    for scene in frames {
+        let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
+        // Save albedo AOV for debugging
+        save_hdr_image(
+            &albedo_data,
+            params.image_width,
+            params.image_height,
+            path,
+            "_albedo",
+            true,
+            false,
+        )?;
 
-    // Save albedo AOV for debugging
-    save_hdr_image(
-        &albedo_data,
-        params.image_width,
-        params.image_height,
-        path,
-        "_albedo",
-        true,
-        false,
-    )?;
+        // Save normal AOV for debugging
+        save_hdr_image(
+            &normal_data,
+            params.image_width,
+            params.image_height,
+            path,
+            "_normal",
+            true,
+            true,
+        )?;
 
-    // Save normal AOV for debugging
-    save_hdr_image(
-        &normal_data,
-        params.image_width,
-        params.image_height,
-        path,
-        "_normal",
-        true,
-        true,
-    )?;
+        // Save noisy HDR image (after sRGB conversion)
+        save_hdr_image(
+            &rendered_hdr_data,
+            params.image_width,
+            params.image_height,
+            path,
+            "_noisy",
+            false,
+            false,
+        )?;
 
-    // Save noisy HDR image (after sRGB conversion)
-    save_hdr_image(
-        &rendered_hdr_data,
-        params.image_width,
-        params.image_height,
-        path,
-        "_noisy",
-        false,
-        false,
-    )?;
-
-    denoise(params, path, rendered_hdr_data, albedo_data, normal_data)
+        denoise(params, path, rendered_hdr_data, albedo_data, normal_data)?;
+    }
+    
+    Ok(())
 }
 #[cfg(feature = "denoise")]
 fn denoise(params: RenderParameters,
