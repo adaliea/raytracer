@@ -86,9 +86,15 @@ impl Texture {
 impl Material {
     pub fn has_displacement_map(&self) -> bool {
         match self {
-            Material::Lambertian { displacement_map, .. } => displacement_map.is_some(),
-            Material::Metallic { displacement_map, .. } => displacement_map.is_some(),
-            Material::Dielectric { displacement_map, .. } => displacement_map.is_some(),
+            Material::Lambertian {
+                displacement_map, ..
+            } => displacement_map.is_some(),
+            Material::Metallic {
+                displacement_map, ..
+            } => displacement_map.is_some(),
+            Material::Dielectric {
+                displacement_map, ..
+            } => displacement_map.is_some(),
             Material::Emissive { .. } => false,
         }
     }

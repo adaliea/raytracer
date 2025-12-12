@@ -7,11 +7,9 @@ use bvh::bounding_hierarchy::BHShape;
 use glam::{Vec2, Vec3A};
 use std::fmt::Debug;
 
-
-
 pub mod sphere;
-pub mod triangle;
 pub mod tessellator;
+pub mod triangle;
 
 #[allow(dead_code)]
 pub struct HitRecord<'a> {

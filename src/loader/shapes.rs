@@ -1,7 +1,7 @@
-use std::f32::consts::PI;
-use glam::{Vec2, Vec3A};
 use crate::hittable::triangle::Triangle;
 use crate::material::Material;
+use glam::{Vec2, Vec3A};
+use std::f32::consts::PI;
 
 pub fn generate_cylinder_triangles(
     center: Vec3A,
@@ -50,17 +50,29 @@ pub fn generate_cylinder_triangles(
 
         // Triangle 1: (v0_bottom, v0_top, v1_top)
         triangles.push(Triangle::new(
-            v0_bottom, v0_top, v1_top,
-            uv00, uv10, uv11,
-            normal_v0, normal_v0, normal_v1,
+            v0_bottom,
+            v0_top,
+            v1_top,
+            uv00,
+            uv10,
+            uv11,
+            normal_v0,
+            normal_v0,
+            normal_v1,
             material.clone(),
         ));
 
         // Triangle 2: (v0_bottom, v1_top, v1_bottom)
         triangles.push(Triangle::new(
-            v0_bottom, v1_top, v1_bottom,
-            uv00, uv11, uv01,
-            normal_v0, normal_v1, normal_v1,
+            v0_bottom,
+            v1_top,
+            v1_bottom,
+            uv00,
+            uv11,
+            uv01,
+            normal_v0,
+            normal_v1,
+            normal_v1,
             material.clone(),
         ));
 

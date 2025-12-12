@@ -54,16 +54,40 @@ pub fn tessellate_triangle(
                 let mut n1 = tri.n1;
                 let mut n2 = tri.n2;
 
-                displace_vertex(&mut v0, &mut n0, &tri.uv0, displacement_map_texture, displacement_strength);
-                displace_vertex(&mut v1, &mut n1, &tri.uv1, displacement_map_texture, displacement_strength);
-                displace_vertex(&mut v2, &mut n2, &tri.uv2, displacement_map_texture, displacement_strength);
+                displace_vertex(
+                    &mut v0,
+                    &mut n0,
+                    &tri.uv0,
+                    displacement_map_texture,
+                    displacement_strength,
+                );
+                displace_vertex(
+                    &mut v1,
+                    &mut n1,
+                    &tri.uv1,
+                    displacement_map_texture,
+                    displacement_strength,
+                );
+                displace_vertex(
+                    &mut v2,
+                    &mut n2,
+                    &tri.uv2,
+                    displacement_map_texture,
+                    displacement_strength,
+                );
 
                 // Don't use new_tri.normal. Use n0, n1, n2.
                 *tri = Triangle::new(
-                    v0, v1, v2,
-                    tri.uv0, tri.uv1, tri.uv2,
-                    n0, n1, n2,
-                    material.clone()
+                    v0,
+                    v1,
+                    v2,
+                    tri.uv0,
+                    tri.uv1,
+                    tri.uv2,
+                    n0,
+                    n1,
+                    n2,
+                    material.clone(),
                 );
             }
         }
@@ -98,31 +122,81 @@ fn subdivide_one_triangle(tri: &Triangle, material: &Material) -> Vec<Triangle> 
     let n20 = ((n2 + n0) / 2.0).normalize_or_zero();
 
     vec![
-        Triangle::new(v0, v01, v20, uv0, uv01, uv20, n0, n01, n20, material.clone()),
-        Triangle::new(v01, v1, v12, uv01, uv1, uv12, n01, n1, n12, material.clone()),
-        Triangle::new(v20, v12, v2, uv20, uv12, uv2, n20, n12, n2, material.clone()),
-        Triangle::new(v01, v12, v20, uv01, uv12, uv20, n01, n12, n20, material.clone()),
+        Triangle::new(
+            v0,
+            v01,
+            v20,
+            uv0,
+            uv01,
+            uv20,
+            n0,
+            n01,
+            n20,
+            material.clone(),
+        ),
+        Triangle::new(
+            v01,
+            v1,
+            v12,
+            uv01,
+            uv1,
+            uv12,
+            n01,
+            n1,
+            n12,
+            material.clone(),
+        ),
+        Triangle::new(
+            v20,
+            v12,
+            v2,
+            uv20,
+            uv12,
+            uv2,
+            n20,
+            n12,
+            n2,
+            material.clone(),
+        ),
+        Triangle::new(
+            v01,
+            v12,
+            v20,
+            uv01,
+            uv12,
+            uv20,
+            n01,
+            n12,
+            n20,
+            material.clone(),
+        ),
     ]
 }
 
 // Helper to get displacement map from material
 fn get_displacement_map_from_material(material: &Material) -> Option<&image::Rgb32FImage> {
     match material {
-        Material::Lambertian { displacement_map, .. } => {
+        Material::Lambertian {
+            displacement_map, ..
+        } => {
             if let Some(tex) = displacement_map {
                 if let crate::material::Texture::Image(img) = tex {
                     return Some(img);
                 }
             }
         }
-        Material::Metallic { displacement_map, .. } => {
+        Material::Metallic {
+            displacement_map, ..
+        } => {
             if let Some(tex) = displacement_map {
                 if let crate::material::Texture::Image(img) = tex {
                     return Some(img);
                 }
             }
         }
-        Material::Dielectric { displacement_map, .. } => {
+        Material::Dielectric {
+            displacement_map, ..
+        } => {
             if let Some(tex) = displacement_map {
                 if let crate::material::Texture::Image(img) = tex {
                     return Some(img);

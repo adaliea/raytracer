@@ -86,7 +86,7 @@ impl Hittable for Sphere {
             normal: Vec3A::ZERO, // Placeholder
             tangent,
             bitangent,
-            front_face: false,   // Placeholder
+            front_face: false, // Placeholder
             material: &self.material,
             uv: LazySphere { outward_normal },
             bh_object_index: self.node_index,

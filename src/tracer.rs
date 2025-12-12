@@ -56,11 +56,14 @@ pub fn ray_color(
                 };
             }
 
-            Material::Lambertian { albedo, normal_map, .. } => {
+            Material::Lambertian {
+                albedo, normal_map, ..
+            } => {
                 let attenuation = albedo.sample(&rec.uv);
                 let shading_normal = get_perturbed_normal(normal_map, &rec);
 
-                let direct_trace = sample_direct_light(world, &rec, shading_normal, attenuation, rng);
+                let direct_trace =
+                    sample_direct_light(world, &rec, shading_normal, attenuation, rng);
 
                 // rr to for GI bounces
                 let probability = (attenuation.max_element().max(0.01) * 2.0).min(1.0);
@@ -307,10 +310,7 @@ fn schlick(cosine: f32, ref_ratio: f32) -> f32 {
 }
 
 #[inline(always)]
-fn get_perturbed_normal(
-    normal_map: &Option<crate::material::Texture>,
-    rec: &HitRecord,
-) -> Vec3A {
+fn get_perturbed_normal(normal_map: &Option<crate::material::Texture>, rec: &HitRecord) -> Vec3A {
     if let Some(map) = normal_map {
         let tangent_normal = map.sample(&rec.uv) * 2.0 - 1.0;
         let tbn = Mat3A::from_cols(rec.tangent, rec.bitangent, rec.normal);

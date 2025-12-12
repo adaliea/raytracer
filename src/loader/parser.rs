@@ -1,19 +1,28 @@
-use crate::loader::file_format::{Background, Camera, Light, Material, Object, Scene};
+use crate::loader::file_format::{
+    Animatable, Animation, AnimationSettings, Background, Camera, Keyframe, Light, Material,
+    Object, Scene,
+};
 use glam::{Vec2, Vec3A};
-use std::iter::Peekable;
+use splines::Interpolation;
+use std::iter::{Peekable};
 
 pub fn parse_ray_file(contents: &str) -> Scene {
     let mut scene = Scene::default();
-    let all_tokens: Vec<&str> = contents
+    let all_tokens: Vec<String> = contents
         .lines()
         .flat_map(|line| {
             let line_without_comments = line.split('#').next().unwrap_or("").trim();
-            line_without_comments.split_whitespace()
+            line_without_comments
+                .replace(['{', '}'], " \0 ") // Use a unique placeholder for {}
+                .split_whitespace()
+                .map(|s| if s == "\0" { "{" } else { s })
+                .map(|s| if s == "}" { "}" } else { s })
+                .map(|s| s.to_string()) // Convert split slices to owned Strings
+                .collect::<Vec<_>>()
         })
         .collect();
 
-    let mut tokens = all_tokens.into_iter().peekable();
-
+    let mut tokens = all_tokens.iter().map(|s| s.as_str()).peekable();
     while let Some(token) = tokens.next() {
         match token {
             "Background" => scene.background = parse_background(&mut tokens),
@@ -21,11 +30,35 @@ pub fn parse_ray_file(contents: &str) -> Scene {
             "Lights" => scene.lights = parse_lights(&mut tokens),
             "Materials" => scene.materials = parse_materials(&mut tokens),
             "Group" => scene.objects = parse_group(&mut tokens),
+            "animationSettings" => scene.animation_settings = parse_animation_settings(&mut tokens),
             _ => {}
         }
     }
 
     scene
+}
+
+fn parse_animation_settings<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = &'a str>>,
+) -> AnimationSettings {
+    let mut settings = AnimationSettings::default();
+    expect_token(tokens, "{");
+    while let Some(token) = tokens.peek() {
+        match *token {
+            "duration" => {
+                tokens.next();
+                settings.duration = parse_f32(tokens);
+            }
+            "frameRate" => {
+                tokens.next();
+                settings.frame_rate = parse_u32(tokens);
+            }
+            _ => {
+                tokens.next();
+            }
+        }
+    }
+    settings
 }
 
 fn parse_background<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Background {
@@ -47,7 +80,7 @@ fn parse_background<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) ->
             }
             _ => {
                 tokens.next();
-            } // ignore unknown tokens
+            }
         }
     }
     background
@@ -60,19 +93,19 @@ fn parse_camera<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Cam
         match *token {
             "eye" => {
                 tokens.next();
-                camera.eye = parse_vec3a(tokens);
+                camera.eye = parse_animatable_vec3a(tokens);
             }
             "lookAt" => {
                 tokens.next();
-                camera.look_at = parse_vec3a(tokens);
+                camera.look_at = parse_animatable_vec3a(tokens);
             }
             "up" => {
                 tokens.next();
-                camera.up = parse_vec3a(tokens);
+                camera.up = parse_animatable_vec3a(tokens);
             }
             "fovy" => {
                 tokens.next();
-                camera.fovy = parse_f32(tokens);
+                camera.fovy = parse_animatable_f32(tokens);
             }
             "}" => {
                 tokens.next();
@@ -114,11 +147,11 @@ fn parse_light<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Ligh
         match *token {
             "position" => {
                 tokens.next();
-                light.position = parse_vec3a(tokens);
+                light.position = parse_animatable_vec3a(tokens);
             }
             "color" => {
                 tokens.next();
-                light.color = parse_vec3a(tokens);
+                light.color = parse_animatable_vec3a(tokens);
             }
             "}" => {
                 tokens.next();
@@ -181,31 +214,31 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
             }
             "diffuseColor" => {
                 tokens.next();
-                material.diffuse_color = parse_vec3a(tokens);
+                material.diffuse_color = parse_animatable_vec3a(tokens);
             }
             "specularColor" => {
                 tokens.next();
-                material.specular_color = parse_vec3a(tokens);
+                material.specular_color = parse_animatable_vec3a(tokens);
             }
             "reflectiveColor" => {
                 tokens.next();
-                material.reflective_color = parse_vec3a(tokens);
+                material.reflective_color = parse_animatable_vec3a(tokens);
             }
             "shininess" => {
                 tokens.next();
-                material.shininess = parse_f32(tokens);
+                material.shininess = parse_animatable_f32(tokens);
             }
             "transparentColor" => {
                 tokens.next();
-                material.transparent_color = parse_vec3a(tokens);
+                material.transparent_color = parse_animatable_vec3a(tokens);
             }
             "indexOfRefraction" => {
                 tokens.next();
-                material.index_of_refraction = parse_f32(tokens);
+                material.index_of_refraction = parse_animatable_f32(tokens);
             }
             "displacementStrength" => {
                 tokens.next();
-                material.displacement_strength = parse_f32(tokens);
+                material.displacement_strength = parse_animatable_f32(tokens);
             }
             "subdivisionLevel" => {
                 tokens.next();
@@ -218,7 +251,7 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
             }
             "emissiveColor" => {
                 tokens.next();
-                material.emissive_color = Some(parse_vec3a(tokens));
+                material.emissive_color = Some(parse_animatable_vec3a(tokens));
             }
             "}" => {
                 tokens.next();
@@ -267,15 +300,15 @@ fn parse_group<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec<
 
 fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
     let mut material_index = 0;
-    let mut vertex0 = Vec3A::ZERO;
-    let mut vertex1 = Vec3A::ZERO;
-    let mut vertex2 = Vec3A::ZERO;
-    let mut tex_xy_0 = Vec2::ZERO;
-    let mut tex_xy_1 = Vec2::ZERO;
-    let mut tex_xy_2 = Vec2::ZERO;
-    let mut normal0 = Vec3A::ZERO;
-    let mut normal1 = Vec3A::ZERO;
-    let mut normal2 = Vec3A::ZERO;
+    let mut vertex0 = Animatable::Static(Vec3A::ZERO);
+    let mut vertex1 = Animatable::Static(Vec3A::ZERO);
+    let mut vertex2 = Animatable::Static(Vec3A::ZERO);
+    let mut tex_xy_0 = Animatable::Static(Vec2::ZERO);
+    let mut tex_xy_1 = Animatable::Static(Vec2::ZERO);
+    let mut tex_xy_2 = Animatable::Static(Vec2::ZERO);
+    let mut normal0 = Animatable::Static(Vec3A::ZERO);
+    let mut normal1 = Animatable::Static(Vec3A::ZERO);
+    let mut normal2 = Animatable::Static(Vec3A::ZERO);
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
         match *token {
@@ -285,39 +318,39 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
             }
             "vertex0" => {
                 tokens.next();
-                vertex0 = parse_vec3a(tokens);
+                vertex0 = parse_animatable_vec3a(tokens);
             }
             "vertex1" => {
                 tokens.next();
-                vertex1 = parse_vec3a(tokens);
+                vertex1 = parse_animatable_vec3a(tokens);
             }
             "vertex2" => {
                 tokens.next();
-                vertex2 = parse_vec3a(tokens);
+                vertex2 = parse_animatable_vec3a(tokens);
             }
             "tex_xy_0" => {
                 tokens.next();
-                tex_xy_0 = parse_vec2(tokens);
+                tex_xy_0 = parse_animatable_vec2(tokens);
             }
             "tex_xy_1" => {
                 tokens.next();
-                tex_xy_1 = parse_vec2(tokens);
+                tex_xy_1 = parse_animatable_vec2(tokens);
             }
             "tex_xy_2" => {
                 tokens.next();
-                tex_xy_2 = parse_vec2(tokens);
+                tex_xy_2 = parse_animatable_vec2(tokens);
             }
             "normal0" => {
                 tokens.next();
-                normal0 = parse_vec3a(tokens);
+                normal0 = parse_animatable_vec3a(tokens);
             }
             "normal1" => {
                 tokens.next();
-                normal1 = parse_vec3a(tokens);
+                normal1 = parse_animatable_vec3a(tokens);
             }
             "normal2" => {
                 tokens.next();
-                normal2 = parse_vec3a(tokens);
+                normal2 = parse_animatable_vec3a(tokens);
             }
             "}" => {
                 tokens.next();
@@ -329,13 +362,23 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
         }
     }
 
-    if normal0 == Vec3A::ZERO && normal1 == Vec3A::ZERO && normal2 == Vec3A::ZERO {
-        let v0v1 = vertex1 - vertex0;
-        let v0v2 = vertex2 - vertex0;
-        let face_normal = v0v1.cross(v0v2).normalize();
-        normal0 = face_normal;
-        normal1 = face_normal;
-        normal2 = face_normal;
+    if normal0 == Animatable::Static(Vec3A::ZERO)
+        && normal1 == Animatable::Static(Vec3A::ZERO)
+        && normal2 == Animatable::Static(Vec3A::ZERO)
+    {
+        if let (
+            Animatable::Static(vertex0),
+            Animatable::Static(vertex1),
+            Animatable::Static(vertex2),
+        ) = (vertex0.clone(), vertex1.clone(), vertex2.clone())
+        {
+            let v0v1 = vertex1 - vertex0;
+            let v0v2 = vertex2 - vertex0;
+            let face_normal = v0v1.cross(v0v2).normalize();
+            normal0 = Animatable::Static(face_normal);
+            normal1 = Animatable::Static(face_normal);
+            normal2 = Animatable::Static(face_normal);
+        }
     }
 
     Object::Triangle {
@@ -354,8 +397,8 @@ fn parse_triangle<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
 
 fn parse_sphere<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
     let mut material_index = 0;
-    let mut center = Vec3A::ZERO;
-    let mut radius = 0.0;
+    let mut center = Animatable::Static(Vec3A::ZERO);
+    let mut radius = Animatable::Static(0.0);
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
         match *token {
@@ -365,11 +408,11 @@ fn parse_sphere<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Obj
             }
             "center" => {
                 tokens.next();
-                center = parse_vec3a(tokens);
+                center = parse_animatable_vec3a(tokens);
             }
             "radius" => {
                 tokens.next();
-                radius = parse_f32(tokens);
+                radius = parse_animatable_f32(tokens);
             }
             "}" => {
                 tokens.next();
@@ -418,9 +461,9 @@ fn parse_mesh<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Objec
 
 fn parse_cylinder<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Object {
     let mut material_index = 0;
-    let mut center = Vec3A::ZERO;
-    let mut radius = 0.0;
-    let mut height = 0.0;
+    let mut center = Animatable::Static(Vec3A::ZERO);
+    let mut radius = Animatable::Static(0.0);
+    let mut height = Animatable::Static(0.0);
     expect_token(tokens, "{");
     while let Some(token) = tokens.peek() {
         match *token {
@@ -430,15 +473,15 @@ fn parse_cylinder<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
             }
             "center" => {
                 tokens.next();
-                center = parse_vec3a(tokens);
+                center = parse_animatable_vec3a(tokens);
             }
             "radius" => {
                 tokens.next();
-                radius = parse_f32(tokens);
+                radius = parse_animatable_f32(tokens);
             }
             "height" => {
                 tokens.next();
-                height = parse_f32(tokens);
+                height = parse_animatable_f32(tokens);
             }
             "}" => {
                 tokens.next();
@@ -455,6 +498,123 @@ fn parse_cylinder<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> O
         radius,
         height,
     }
+}
+
+fn parse_animatable_vec3a<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = &'a str>>,
+) -> Animatable<Vec3A> {
+    if let Some(token) = tokens.peek() {
+        match *token {
+            "Bezier" | "CatmullRom" | "Linear" => {
+                let interpolation_str = tokens.next().unwrap();
+                let interpolation = match interpolation_str {
+                    "Bezier" => Interpolation::Bezier(0.5),
+                    "CatmullRom" => Interpolation::CatmullRom,
+                    "Linear" => Interpolation::Linear,
+                    _ => panic!("Unknown interpolation type"),
+                };
+
+                expect_token(tokens, "{");
+
+                let mut keyframes = Vec::new();
+
+                while tokens.peek() != Some(&"}") {
+                    let value = parse_vec3a(tokens);
+                    let time = parse_f32(tokens);
+                    keyframes.push(Keyframe { value, time });
+                }
+
+                expect_token(tokens, "}");
+
+                return Animatable::Animated(Animation {
+                    interpolation,
+                    keyframes,
+                });
+            }
+            _ => {
+                return Animatable::Static(parse_vec3a(tokens));
+            }
+        }
+    }
+    panic!("Unexpected end of tokens");
+}
+
+fn parse_animatable_vec2<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = &'a str>>,
+) -> Animatable<Vec2> {
+    if let Some(token) = tokens.peek() {
+        match *token {
+            "Bezier" | "CatmullRom" | "Linear" => {
+                let interpolation_str = tokens.next().unwrap();
+                let interpolation = match interpolation_str {
+                    "Bezier" => Interpolation::Bezier(0.5),
+                    "CatmullRom" => Interpolation::CatmullRom,
+                    "Linear" => Interpolation::Linear,
+                    _ => panic!("Unknown interpolation type"),
+                };
+
+                expect_token(tokens, "{");
+
+                let mut keyframes = Vec::new();
+
+                while tokens.peek() != Some(&"}") {
+                    let value = parse_vec2(tokens);
+                    let time = parse_f32(tokens);
+                    keyframes.push(Keyframe { value, time });
+                }
+
+                expect_token(tokens, "}");
+
+                return Animatable::Animated(Animation {
+                    interpolation,
+                    keyframes,
+                });
+            }
+            _ => {
+                return Animatable::Static(parse_vec2(tokens));
+            }
+        }
+    }
+    panic!("Unexpected end of tokens");
+}
+
+fn parse_animatable_f32<'a>(
+    tokens: &mut Peekable<impl Iterator<Item = &'a str>>,
+) -> Animatable<f32> {
+    if let Some(token) = tokens.peek() {
+        match *token {
+            "Bezier" | "CatmullRom" | "Linear" => {
+                let interpolation_str = tokens.next().unwrap();
+                let interpolation = match interpolation_str {
+                    "Bezier" => Interpolation::Bezier(0.5),
+                    "CatmullRom" => Interpolation::CatmullRom,
+                    "Linear" => Interpolation::Linear,
+                    _ => panic!("Unknown interpolation type"),
+                };
+
+                expect_token(tokens, "{");
+
+                let mut keyframes = Vec::new();
+
+                while tokens.peek() != Some(&"}") {
+                    let value = parse_f32(tokens);
+                    let time = parse_f32(tokens);
+                    keyframes.push(Keyframe { value, time });
+                }
+
+                expect_token(tokens, "}");
+
+                return Animatable::Animated(Animation {
+                    interpolation,
+                    keyframes,
+                });
+            }
+            _ => {
+                return Animatable::Static(parse_f32(tokens));
+            }
+        }
+    }
+    panic!("Unexpected end of tokens");
 }
 
 fn parse_vec3a<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> Vec3A {

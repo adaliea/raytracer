@@ -1,3 +1,5 @@
+#![feature(unboxed_closures)]
+
 use rayon::iter::ParallelIterator;
 mod camera;
 mod hittable;
@@ -7,12 +9,13 @@ mod ray;
 mod scene;
 mod tracer;
 
+use crate::loader::SceneIterator;
 use crate::scene::Scene;
 use crate::tracer::ray_color;
 use glam::Vec3A;
 use image::{ImageBuffer, ImageResult, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
-use log::{info};
+use log::info;
 #[cfg(not(feature = "denoise"))]
 use log::warn;
 use rand::Rng;
@@ -20,11 +23,10 @@ use rayon::prelude::*;
 use std::error::Error;
 use std::fs::create_dir;
 use std::iter::Peekable;
-use std::path::{Path};
+use std::iter::once;
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
-
-
 
 #[derive(Debug, Copy, Clone)]
 
@@ -73,13 +75,9 @@ pub fn render_hdr(params: RenderParameters, scene: Scene) -> (Vec<f32>, Vec<f32>
     );
 
     // Render
-    let mut hdr_buffer =
-        vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
-    let mut albedo_buffer =
-        vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
-    let mut normal_buffer =
-        vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
-
+    let mut hdr_buffer = vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
+    let mut albedo_buffer = vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
+    let mut normal_buffer = vec![Vec3A::ZERO; (params.image_width * params.image_height) as usize];
 
     let total_rays = AtomicU64::new(0);
     // parallelizes per image row
@@ -121,7 +119,6 @@ pub fn render_hdr(params: RenderParameters, scene: Scene) -> (Vec<f32>, Vec<f32>
             *albedo_pixel = total_albedo / params.samples_per_pixel as f32;
             *normal_pixel = total_normal / params.samples_per_pixel as f32;
 
-
             bar.inc(1);
             total_rays.fetch_add(rays, Ordering::Relaxed);
         });
@@ -140,8 +137,14 @@ pub fn render_hdr(params: RenderParameters, scene: Scene) -> (Vec<f32>, Vec<f32>
 
     // Flatten the buffer of Vec3A to a Vec<f32> for OIDN
     let flat_hdr = hdr_buffer.into_iter().flat_map(|v| v.to_array()).collect();
-    let flat_albedo = albedo_buffer.into_iter().flat_map(|v| v.to_array()).collect();
-    let flat_normal = normal_buffer.into_iter().flat_map(|v| v.to_array()).collect();
+    let flat_albedo = albedo_buffer
+        .into_iter()
+        .flat_map(|v| v.to_array())
+        .collect();
+    let flat_normal = normal_buffer
+        .into_iter()
+        .flat_map(|v| v.to_array())
+        .collect();
     (flat_hdr, flat_albedo, flat_normal)
 }
 
@@ -200,15 +203,16 @@ pub fn save_hdr_image(
     img_buffer.save(format!("output/{}{}.png", filename, suffix))
 }
 
-pub fn load_scene(path: &Path, aspect_ratio: f32) -> Result<Peekable<Box< dyn ExactSizeIterator<Item=Scene>>>, Box<dyn Error>> {
+pub fn load_scene(
+    path: &Path,
+    aspect_ratio: f32,
+) -> Result<Peekable<SceneIterator>, Box<dyn Error>> {
     info!("Loading scene from {:?}", path);
 
     // Scene
     let mut scene = loader::load_scene(path, aspect_ratio)?;
-    if let Some(first_frame) =  scene.peek() {
-        info!("Loaded scene with {} objects and {} frames", first_frame.objects.len(), scene.len());
-    } else {
-        return Err(From::from("No scene found"));
+    if let Some(frame) = scene.peek() {
+        info!("Loaded scene with {} objects", frame.objects.len());
     }
     Ok(scene)
 }
@@ -252,13 +256,17 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
 
         denoise(params, path, rendered_hdr_data, albedo_data, normal_data)?;
     }
-    
+
     Ok(())
 }
 #[cfg(feature = "denoise")]
-fn denoise(params: RenderParameters,
-           path: &Path,
-           rendered_hdr_data: Vec<f32>, albedo_data: Vec<f32>, normal_data:  Vec<f32>) -> Result<(), Box<dyn Error>> {
+fn denoise(
+    params: RenderParameters,
+    path: &Path,
+    rendered_hdr_data: Vec<f32>,
+    albedo_data: Vec<f32>,
+    normal_data: Vec<f32>,
+) -> Result<(), Box<dyn Error>> {
     // Denoise with OIDN
     info!("Denoising image with OIDN...");
     let mut denoised_hdr_data = vec![0.0; rendered_hdr_data.len()];
@@ -279,13 +287,18 @@ fn denoise(params: RenderParameters,
         "", // No suffix for the final denoised image
         false,
         false,
-    ).map_err(Box::from)
+    )
+    .map_err(Box::from)
 }
 
 #[cfg(not(feature = "denoise"))]
-fn denoise(_params: RenderParameters,
-           _path: &Path,
-           _rendered_hdr_data: Vec<f32>, _albedo_data: Vec<f32>, _normal_data:  Vec<f32>) -> Result<(), Box<dyn Error>> {
+fn denoise(
+    _params: RenderParameters,
+    _path: &Path,
+    _rendered_hdr_data: Vec<f32>,
+    _albedo_data: Vec<f32>,
+    _normal_data: Vec<f32>,
+) -> Result<(), Box<dyn Error>> {
     warn!("Skipping final image generation: Denoising is disabled");
     Ok(())
 }
