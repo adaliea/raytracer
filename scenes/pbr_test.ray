@@ -1,5 +1,8 @@
 # A scene to test PBR materials and displacement mapping
-
+AnimationSettings {
+    duration 3
+    frameRate 5
+}
 Background {
     color 0.1 0.1 0.1
 }
@@ -13,7 +16,7 @@ Camera {
 
 Lights {
     Light {
-        position -20 3 -10
+        position Linear { (-20 3 -10) 0, (10 3 5) 3 }
         color 30 30 30
     }
 }

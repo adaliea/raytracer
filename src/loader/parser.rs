@@ -15,6 +15,9 @@ pub fn parse_ray_file(contents: &str) -> Scene {
             line_without_comments
                 .replace('{', " { ")
                 .replace('}', " } ")
+                .replace('(', " ( ")
+                .replace(')', " ) ")
+                .replace(',', " , ")
                 .split_whitespace()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>()
@@ -29,7 +32,7 @@ pub fn parse_ray_file(contents: &str) -> Scene {
             "Lights" => scene.lights = parse_lights(&mut tokens),
             "Materials" => scene.materials = parse_materials(&mut tokens),
             "Group" => scene.objects = parse_group(&mut tokens),
-            "animationSettings" => scene.animation_settings = parse_animation_settings(&mut tokens),
+            "AnimationSettings" => scene.animation_settings = parse_animation_settings(&mut tokens),
             _ => {}
         }
     }
@@ -51,6 +54,10 @@ fn parse_animation_settings<'a>(
             "frameRate" => {
                 tokens.next();
                 settings.frame_rate = parse_u32(tokens);
+            }
+            "}" => {
+                tokens.next();
+                break;
             }
             _ => {
                 tokens.next();
@@ -518,9 +525,15 @@ fn parse_animatable_vec3a<'a>(
                 let mut keyframes = Vec::new();
 
                 while tokens.peek() != Some(&"}") {
+                    expect_token(tokens, "(");
                     let value = parse_vec3a(tokens);
+                    expect_token(tokens, ")");
                     let time = parse_f32(tokens);
                     keyframes.push(Keyframe { value, time });
+
+                    if tokens.peek() == Some(&",") {
+                        tokens.next(); // consume ","
+                    }
                 }
 
                 expect_token(tokens, "}");
@@ -557,9 +570,15 @@ fn parse_animatable_vec2<'a>(
                 let mut keyframes = Vec::new();
 
                 while tokens.peek() != Some(&"}") {
+                    expect_token(tokens, "(");
                     let value = parse_vec2(tokens);
+                    expect_token(tokens, ")");
                     let time = parse_f32(tokens);
                     keyframes.push(Keyframe { value, time });
+
+                    if tokens.peek() == Some(&",") {
+                        tokens.next(); // consume ","
+                    }
                 }
 
                 expect_token(tokens, "}");
@@ -599,6 +618,9 @@ fn parse_animatable_f32<'a>(
                     let value = parse_f32(tokens);
                     let time = parse_f32(tokens);
                     keyframes.push(Keyframe { value, time });
+                    if tokens.peek() == Some(&",") {
+                        tokens.next(); // consume ","
+                    }
                 }
 
                 expect_token(tokens, "}");

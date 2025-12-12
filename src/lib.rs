@@ -156,10 +156,12 @@ pub fn save_hdr_image(
     suffix: &str,
     is_aov: bool,
     is_normal: bool,
+    frame_number: usize
 ) -> ImageResult<()> {
     let path = Path::new(scene_path);
     let filename = path.file_stem().unwrap().to_str().unwrap();
-    let dir = Path::new("output");
+    let output_dir = format!("output/{}", filename);
+    let dir = Path::new(&output_dir);
     if !dir.exists() || !dir.is_dir() {
         create_dir(dir)
             .unwrap_or_else(|_| panic!("Failed to create output directory {}", dir.display()))
@@ -200,7 +202,7 @@ pub fn save_hdr_image(
             );
         }
     }
-    img_buffer.save(format!("output/{}{}.png", filename, suffix))
+    img_buffer.save(format!("output/{}/{}{}_{}.png", filename, filename, suffix, frame_number))
 }
 
 pub fn load_scene(
@@ -219,7 +221,8 @@ pub fn load_scene(
 
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
     let frames = load_scene(path, params.aspect_ratio)?;
-    for scene in frames {
+
+    for (i, scene) in frames.enumerate() {
         let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
         // Save albedo AOV for debugging
         save_hdr_image(
@@ -230,6 +233,7 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
             "_albedo",
             true,
             false,
+            i
         )?;
 
         // Save normal AOV for debugging
@@ -241,6 +245,7 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
             "_normal",
             true,
             true,
+            i
         )?;
 
         // Save noisy HDR image (after sRGB conversion)
@@ -252,9 +257,10 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
             "_noisy",
             false,
             false,
+            i
         )?;
 
-        denoise(params, path, rendered_hdr_data, albedo_data, normal_data)?;
+        denoise(params, path, rendered_hdr_data, albedo_data, normal_data, i)?;
     }
 
     Ok(())
@@ -266,6 +272,7 @@ fn denoise(
     rendered_hdr_data: Vec<f32>,
     albedo_data: Vec<f32>,
     normal_data: Vec<f32>,
+    frame_number: usize,
 ) -> Result<(), Box<dyn Error>> {
     // Denoise with OIDN
     info!("Denoising image with OIDN...");
@@ -287,6 +294,7 @@ fn denoise(
         "", // No suffix for the final denoised image
         false,
         false,
+        frame_number
     )
     .map_err(Box::from)
 }
@@ -298,6 +306,7 @@ fn denoise(
     _rendered_hdr_data: Vec<f32>,
     _albedo_data: Vec<f32>,
     _normal_data: Vec<f32>,
+    _frame_number: usize
 ) -> Result<(), Box<dyn Error>> {
     warn!("Skipping final image generation: Denoising is disabled");
     Ok(())
