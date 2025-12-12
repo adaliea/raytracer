@@ -13,11 +13,10 @@ pub fn parse_ray_file(contents: &str) -> Scene {
         .flat_map(|line| {
             let line_without_comments = line.split('#').next().unwrap_or("").trim();
             line_without_comments
-                .replace(['{', '}'], " \0 ") // Use a unique placeholder for {}
+                .replace('{', " { ")
+                .replace('}', " } ")
                 .split_whitespace()
-                .map(|s| if s == "\0" { "{" } else { s })
-                .map(|s| if s == "}" { "}" } else { s })
-                .map(|s| s.to_string()) // Convert split slices to owned Strings
+                .map(|s| s.to_string())
                 .collect::<Vec<_>>()
         })
         .collect();

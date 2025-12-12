@@ -499,7 +499,7 @@ pub(crate) fn load_scene(
     Ok(SceneIterator {
         file_scene,
         aspect_ratio,
-        path: Default::default(),
+        path: path.to_path_buf(),
         frame_number: 0,
     }
     .peekable())
