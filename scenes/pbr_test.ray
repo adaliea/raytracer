@@ -1,14 +1,14 @@
 # A scene to test PBR materials and displacement mapping
 AnimationSettings {
     duration 3
-    frameRate 5
+    frameRate 30
 }
 Background {
     color 0.1 0.1 0.1
 }
 
 Camera {
-    eye -4 2 8
+    eye Linear { (-4 2 6) 0, (-8 2 6) 3}
     lookAt 0 0 0
     up 0 1 0
     fovy 25
@@ -16,8 +16,8 @@ Camera {
 
 Lights {
     Light {
-        position Linear { (-20 3 -10) 0, (10 3 5) 3 }
-        color 30 30 30
+        position Linear { (-20 5 -10) 0, (10 5 0) 3 }
+        color Linear {  (40 40 40) 0, (33 30 30) 0 }
     }
 }
 

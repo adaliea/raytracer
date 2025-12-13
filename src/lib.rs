@@ -224,43 +224,49 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
 
     for (i, scene) in frames.enumerate() {
         let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
-        // Save albedo AOV for debugging
-        save_hdr_image(
-            &albedo_data,
-            params.image_width,
-            params.image_height,
-            path,
-            "_albedo",
-            true,
-            false,
-            i
-        )?;
 
-        // Save normal AOV for debugging
-        save_hdr_image(
-            &normal_data,
-            params.image_width,
-            params.image_height,
-            path,
-            "_normal",
-            true,
-            true,
-            i
-        )?;
+        let path_clone = path.to_owned();
+        rayon::spawn(
+            move || {
+                // Save albedo AOV for debugging
+                save_hdr_image(
+                    &albedo_data,
+                    params.image_width,
+                    params.image_height,
+                    &path_clone,
+                    "_albedo",
+                    true,
+                    false,
+                    i
+                ).unwrap();
 
-        // Save noisy HDR image (after sRGB conversion)
-        save_hdr_image(
-            &rendered_hdr_data,
-            params.image_width,
-            params.image_height,
-            path,
-            "_noisy",
-            false,
-            false,
-            i
-        )?;
+                // Save normal AOV for debugging
+                save_hdr_image(
+                    &normal_data,
+                    params.image_width,
+                    params.image_height,
+                    &path_clone,
+                    "_normal",
+                    true,
+                    true,
+                    i
+                ).unwrap();
 
-        denoise(params, path, rendered_hdr_data, albedo_data, normal_data, i)?;
+                // Save noisy HDR image (after sRGB conversion)
+                save_hdr_image(
+                    &rendered_hdr_data,
+                    params.image_width,
+                    params.image_height,
+                    &path_clone,
+                    "_noisy",
+                    false,
+                    false,
+                    i
+                ).unwrap();
+
+                denoise(params, &path_clone, rendered_hdr_data, albedo_data, normal_data, i).unwrap();
+            }
+        )
     }
 
     Ok(())

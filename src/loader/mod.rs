@@ -59,6 +59,7 @@ fn resolve_animatable_vec_3(animatable: &Animatable<Vec3A>, time: f32) -> Vec3A 
     resolve_animatable(
         animatable,
         time,
+        3,
         |vec: Vec3A, index| vec[index],
         |val, index, vec| vec[index] = val,
     )
@@ -68,17 +69,19 @@ fn resolve_animatable_vec_2(animatable: &Animatable<Vec2>, time: f32) -> Vec2 {
     resolve_animatable(
         animatable,
         time,
+        2,
         |vec: Vec2, index| vec[index],
         |val, index, vec| vec[index] = val,
     )
 }
 
 fn resolve_animatable_f32(animatable: &Animatable<f32>, time: f32) -> f32 {
-    resolve_animatable(animatable, time, |f, _index| f, |val, _index, f| *f = val)
+    resolve_animatable(animatable, time, 1, |f, _index| f, |val, _index, f| *f = val)
 }
 fn resolve_animatable<T: Copy + Default, A: Fn(T, usize) -> f32, B: Fn(f32, usize, &mut T)>(
     animatable: &Animatable<T>,
     time: f32,
+    num_dimensions: usize,
     into_f32: A,
     from_f32: B,
 ) -> T {
@@ -97,7 +100,7 @@ fn resolve_animatable<T: Copy + Default, A: Fn(T, usize) -> f32, B: Fn(f32, usiz
 
             let mut output = T::default();
             // Interpolate each dimension independently
-            for i in 0..2 {
+            for i in 0..num_dimensions {
                 let keys = animation
                     .keyframes
                     .iter()
