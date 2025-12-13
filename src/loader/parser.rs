@@ -4,7 +4,7 @@ use crate::loader::file_format::{
 };
 use glam::{Vec2, Vec3A};
 use splines::Interpolation;
-use std::iter::{Peekable};
+use std::iter::Peekable;
 
 pub fn parse_ray_file(contents: &str) -> Scene {
     let mut scene = Scene::default();

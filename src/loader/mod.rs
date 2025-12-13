@@ -76,7 +76,13 @@ fn resolve_animatable_vec_2(animatable: &Animatable<Vec2>, time: f32) -> Vec2 {
 }
 
 fn resolve_animatable_f32(animatable: &Animatable<f32>, time: f32) -> f32 {
-    resolve_animatable(animatable, time, 1, |f, _index| f, |val, _index, f| *f = val)
+    resolve_animatable(
+        animatable,
+        time,
+        1,
+        |f, _index| f,
+        |val, _index, f| *f = val,
+    )
 }
 fn resolve_animatable<T: Copy + Default, A: Fn(T, usize) -> f32, B: Fn(f32, usize, &mut T)>(
     animatable: &Animatable<T>,
@@ -168,9 +174,10 @@ pub fn load_scene_at_time(
                     displacement_map,
                     displacement_strength: resolve_animatable_f32(&mat.displacement_strength, time),
                     subdivision_level: mat.subdivision_level,
-                    max_edge_length: mat.max_edge_length.as_ref().map(|f| {
-                        resolve_animatable_f32(f, time)
-                    }),
+                    max_edge_length: mat
+                        .max_edge_length
+                        .as_ref()
+                        .map(|f| resolve_animatable_f32(f, time)),
                 }
             } else {
                 let reflective_color = resolve_animatable_vec_3(&mat.reflective_color, time);
@@ -221,9 +228,10 @@ pub fn load_scene_at_time(
                             time,
                         ),
                         subdivision_level: mat.subdivision_level,
-                        max_edge_length: mat.max_edge_length.as_ref().map(|f| {
-                            resolve_animatable_f32(f, time)
-                        }),
+                        max_edge_length: mat
+                            .max_edge_length
+                            .as_ref()
+                            .map(|f| resolve_animatable_f32(f, time)),
                     }
                 } else {
                     Material::Lambertian {
@@ -235,9 +243,10 @@ pub fn load_scene_at_time(
                             time,
                         ),
                         subdivision_level: mat.subdivision_level,
-                        max_edge_length: mat.max_edge_length.as_ref().map(|f| {
-                            resolve_animatable_f32(f, time)
-                        }),
+                        max_edge_length: mat
+                            .max_edge_length
+                            .as_ref()
+                            .map(|f| resolve_animatable_f32(f, time)),
                     }
                 }
             }

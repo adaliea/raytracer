@@ -98,9 +98,15 @@ cargo run --release --no-default-features
 - Output files are in `./output`
 - Executables are in the `./releases` folder
   - Note: Where you run the executable from isn't important as textures load relative to the scene file.
+  - Note: Use `.\target\debug\raytracer.exe --help` to see the command line interface
 - The `brutalist` & `pbr_test` scenes are animated
 
 ## Extra Credit Work
+- Animation
+  - All Vec3, Vec2, & f32 properties can be animated with the following syntax
+    - `Interpolation {p1 t1, p2 t2, ...}`
+    - In paractice this will look something like: `Linear { (-4 2 6) 0, (-8 2 6) 3}`
+      - This is doing a linear transformation from `(-4 2 6)` at `t=0` to `(-8 2 6)` at `t=3`
 - Denoising with OIDN (Open Image Denoise)
   - Significantly reduces the number of samples required to get pretty images
     - Even 1 sample/pixel can get nice looking results! Useful for test renders

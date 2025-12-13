@@ -157,7 +157,7 @@ pub fn save_hdr_image(
     suffix: &str,
     is_aov: bool,
     is_normal: bool,
-    frame_number: usize
+    frame_number: usize,
 ) -> ImageResult<()> {
     let path = Path::new(scene_path);
     let filename = path.file_stem().unwrap().to_str().unwrap();
@@ -203,7 +203,10 @@ pub fn save_hdr_image(
             );
         }
     }
-    img_buffer.save(format!("output/{}/{}{}_{}.png", filename, filename, suffix, frame_number))
+    img_buffer.save(format!(
+        "output/{}/{}{}_{}.png",
+        filename, filename, suffix, frame_number
+    ))
 }
 
 pub fn load_scene(
@@ -329,7 +332,7 @@ fn denoise(
         "", // No suffix for the final denoised image
         false,
         false,
-        frame_number
+        frame_number,
     )
     .map_err(Box::from)
 }
@@ -341,7 +344,7 @@ fn denoise(
     _rendered_hdr_data: Vec<f32>,
     _albedo_data: Vec<f32>,
     _normal_data: Vec<f32>,
-    _frame_number: usize
+    _frame_number: usize,
 ) -> Result<(), Box<dyn Error>> {
     warn!("Skipping final image generation: Denoising is disabled");
     Ok(())
