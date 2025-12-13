@@ -76,7 +76,6 @@ pub fn tessellate_triangle(
                     displacement_strength,
                 );
 
-                // Don't use new_tri.normal. Use n0, n1, n2.
                 *tri = Triangle::new(
                     v0,
                     v1,
@@ -173,7 +172,7 @@ fn subdivide_one_triangle(tri: &Triangle, material: &Material) -> Vec<Triangle> 
     ]
 }
 
-// Helper to get displacement map from material
+/// Helper to get displacement map from material
 fn get_displacement_map_from_material(material: &Material) -> Option<&image::Rgb32FImage> {
     match material {
         Material::Lambertian {
@@ -208,7 +207,7 @@ fn get_displacement_map_from_material(material: &Material) -> Option<&image::Rgb
     None
 }
 
-// Helper function to displace a vertex
+/// Helper function to displace a vertex
 fn displace_vertex(
     vertex: &mut Vec3A,
     normal: &mut Vec3A,

@@ -105,8 +105,17 @@ cargo run --release --no-default-features
 - Animation
   - All Vec3, Vec2, & f32 properties can be animated with the following syntax
     - `Interpolation {p1 t1, p2 t2, ...}`
-    - In paractice this will look something like: `Linear { (-4 2 6) 0, (-8 2 6) 3}`
+    - In paractice this will look something like: `Linear { (-4 2 6) 0, (-8 2 6) 3 }`
       - This is doing a linear transformation from `(-4 2 6)` at `t=0` to `(-8 2 6)` at `t=3`
+    - See `./scenes/tess_test.ray` for usage examples
+  - Global animations proerties are defined in an `AnimationSettings` block:
+  ```
+  AnimationSettings {
+    duration 3
+    frameRate 30
+  }
+  ```
+
 - Denoising with OIDN (Open Image Denoise)
   - Significantly reduces the number of samples required to get pretty images
     - Even 1 sample/pixel can get nice looking results! Useful for test renders
@@ -158,3 +167,17 @@ https://polyhaven.com/a/plank_flooring_03
 https://polyhaven.com/a/cobblestone_pavement
 https://polyhaven.com/a/dirty_concrete
 https://polyhaven.com/a/coral_fort_wall_02
+https://polyhaven.com/a/metal_plate
+https://polyhaven.com/a/plastered_wall
+
+
+## AI usage
+
+Some repetative, non-raytracer code was written with the help of AI, namely:
+
+- Some of `./src/loader/file_format.rs`
+- Most of `./src/loader/parser.rs` -- Code in that parses the `.ray` files into a friendly format to use in rust.
+- The `./render_to_video.py` script to encode the final video into an mp4.
+- The `./scenes/textures/compress_exr.py` to re-encode exr files into a format the `image` crate can decode.
+- Some stuff regarding the devcontainer & Dockerfile
+- Some other small instances & to help with debugging in some cases.

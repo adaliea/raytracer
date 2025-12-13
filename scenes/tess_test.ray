@@ -3,6 +3,7 @@ AnimationSettings {
     duration 3
     frameRate 30
 }
+
 Background {
     color 0.1 0.1 0.1
 }
