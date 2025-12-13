@@ -26,6 +26,7 @@ use std::iter::Peekable;
 use std::iter::once;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread;
 use std::time::Instant;
 
 #[derive(Debug, Copy, Clone)]
@@ -222,6 +223,7 @@ pub fn load_scene(
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
     let frames = load_scene(path, params.aspect_ratio)?;
 
+    let mut last_save_task = None;
     // Create a channel to send scenes from the loading thread to the rendering thread.
     // The channel is bounded to 1 to avoid loading too many scenes into memory.
     let (scene_sender, scene_receiver) = std::sync::mpsc::sync_channel(1);
@@ -240,7 +242,7 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
         let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
 
         let path_clone = path.to_owned();
-        rayon::spawn(move || {
+        last_save_task = Some(thread::spawn(move || {
             // Save albedo AOV for debugging
             save_hdr_image(
                 &albedo_data,
@@ -289,11 +291,12 @@ pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), 
                 i,
             )
             .unwrap();
-        });
+        }));
     }
 
     // Wait for the loading thread to finish.
     loading_thread.join().unwrap();
+    last_save_task.unwrap().join().unwrap();
 
     Ok(())
 }

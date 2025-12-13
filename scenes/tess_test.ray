@@ -1,0 +1,75 @@
+# A scene to test PBR materials and displacement mapping
+AnimationSettings {
+    duration 3
+    frameRate 30
+}
+Background {
+    color 0.1 0.1 0.1
+}
+
+Camera {
+    eye Linear { (-4 2 6) 0, (-8 2 6) 3}
+    lookAt 0 0 0
+    up 0 1 0
+    fovy 25
+}
+
+Lights {
+    Light {
+        position Linear { (-20 5 -10) 0, (10 5 0) 3 }
+        color Linear {  (40 40 40) 0, (33 30 30) 3 }
+    }
+}
+
+Materials {
+    # Cobblestone material for the ground plane
+    Material {
+        textureFilename textures/rocky_terrain/rocky_terrain_diff_2k.jpg
+        displacementMapFilename textures/rocky_terrain/rocky_terrain_disp_2k.png
+        normalMapFilename textures/rocky_terrain/rocky_terrain_nor_gl_2k.exr
+        displacementStrength 0.3
+        diffuseColor 1 1 1
+        maxEdgeLength Linear {  0.1 0.5, 0.1 0.5, 5 2.5, 5 3 }
+    }
+    
+    # Whitewashed brick for the cylinder
+    Material {
+        textureFilename textures/whitewashed_brick/whitewashed_brick_diff_2k.jpg
+        displacementMapFilename textures/whitewashed_brick/whitewashed_brick_disp_2k.png
+        normalMapFilename textures/whitewashed_brick/whitewashed_brick_nor_gl_2k.exr
+        displacementStrength 0.1
+        shininess 20
+        maxEdgeLength 0.5
+
+    }
+}
+
+Group {
+    # Ground plane (as two triangles)
+    Triangle {
+        vertex0 -10 0 10
+        vertex1 10 0 10
+        vertex2 -10 0 -10
+        tex_xy_0 0 4
+        tex_xy_1 4 4
+        tex_xy_2 0 0
+        materialIndex 0
+    }
+    Triangle {
+        vertex0 10 0 -10
+        vertex1 -10 0 -10
+        vertex2 10 0 10
+        tex_xy_0 4 0
+        tex_xy_1 0 0
+        tex_xy_2 4 4
+        materialIndex 0
+    }
+    
+    # Cylinder
+    Cylinder {
+        center 0 1 0
+        radius 1
+        height 3.5
+        materialIndex 1
+    }
+}

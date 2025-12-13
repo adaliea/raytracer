@@ -253,7 +253,7 @@ fn parse_material<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a str>>) -> M
 
             "maxEdgeLength" => {
                 tokens.next();
-                material.max_edge_length = Some(parse_f32(tokens));
+                material.max_edge_length = Some(parse_animatable_f32(tokens));
             }
             "emissiveColor" => {
                 tokens.next();

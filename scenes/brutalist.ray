@@ -1,11 +1,14 @@
-# Brutalist Scene: The Concrete Crevasse (Iter_05 - Fixed Gaps & Horizon)
 
+AnimationSettings {
+    duration 3
+    frameRate 24
+}
 Background {
     color 0.05 0.05 0.05
 }
 
 Camera {
-    eye 0 2 15
+    eye Linear {(0 2 15) 0 (0 2 10) 3}
     lookAt 0 2.5 0
     up 0 1 0
     fovy 39
@@ -14,7 +17,7 @@ Camera {
 Lights {
     # Sunlight
     Light {
-        position 20 60 20
+        position Linear {(20 60 20) 0 (-20 60 20) 3}
         color 288 264 240
     }
     # Fill

@@ -66,7 +66,7 @@ pub struct Material {
     pub index_of_refraction: Animatable<f32>,
     pub displacement_strength: Animatable<f32>,
     pub subdivision_level: Option<u32>,
-    pub max_edge_length: Option<f32>,
+    pub max_edge_length: Option<Animatable<f32>>,
     pub emissive_color: Option<Animatable<Vec3A>>,
 }
 

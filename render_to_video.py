@@ -60,8 +60,7 @@ def create_videos_from_renders(output_dir="./output"):
                 "-y",
                 "-i", os.path.join(scene_path, f"{scene_name}_%d.png"), 
                 "-r", str(framerate),
-                "-pix_fmt", "yuv420p",
-                "-crf", "23",
+                "-crf", "18",
                 output_video_path
             ]
             print(f"Creating video for scene '{scene_name}' (main output) with framerate {framerate}...")
