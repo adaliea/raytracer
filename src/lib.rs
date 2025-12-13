@@ -222,52 +222,78 @@ pub fn load_scene(
 pub fn load_and_save_scene(path: &Path, params: RenderParameters) -> Result<(), Box<dyn Error>> {
     let frames = load_scene(path, params.aspect_ratio)?;
 
-    for (i, scene) in frames.enumerate() {
+    // Create a channel to send scenes from the loading thread to the rendering thread.
+    // The channel is bounded to 1 to avoid loading too many scenes into memory.
+    let (scene_sender, scene_receiver) = std::sync::mpsc::sync_channel(1);
+
+    // Spawn a thread to load scenes and send them to the rendering thread.
+    let loading_thread = std::thread::spawn(move || {
+        for scene in frames {
+            if scene_sender.send(scene).is_err() {
+                // The receiver has been dropped, so we can stop loading scenes.
+                break;
+            }
+        }
+    });
+
+    for (i, scene) in scene_receiver.into_iter().enumerate() {
         let (rendered_hdr_data, albedo_data, normal_data) = render_hdr(params, scene);
 
         let path_clone = path.to_owned();
-        rayon::spawn(
-            move || {
-                // Save albedo AOV for debugging
-                save_hdr_image(
-                    &albedo_data,
-                    params.image_width,
-                    params.image_height,
-                    &path_clone,
-                    "_albedo",
-                    true,
-                    false,
-                    i
-                ).unwrap();
+        rayon::spawn(move || {
+            // Save albedo AOV for debugging
+            save_hdr_image(
+                &albedo_data,
+                params.image_width,
+                params.image_height,
+                &path_clone,
+                "_albedo",
+                true,
+                false,
+                i,
+            )
+            .unwrap();
 
-                // Save normal AOV for debugging
-                save_hdr_image(
-                    &normal_data,
-                    params.image_width,
-                    params.image_height,
-                    &path_clone,
-                    "_normal",
-                    true,
-                    true,
-                    i
-                ).unwrap();
+            // Save normal AOV for debugging
+            save_hdr_image(
+                &normal_data,
+                params.image_width,
+                params.image_height,
+                &path_clone,
+                "_normal",
+                true,
+                true,
+                i,
+            )
+            .unwrap();
 
-                // Save noisy HDR image (after sRGB conversion)
-                save_hdr_image(
-                    &rendered_hdr_data,
-                    params.image_width,
-                    params.image_height,
-                    &path_clone,
-                    "_noisy",
-                    false,
-                    false,
-                    i
-                ).unwrap();
+            // Save noisy HDR image (after sRGB conversion)
+            save_hdr_image(
+                &rendered_hdr_data,
+                params.image_width,
+                params.image_height,
+                &path_clone,
+                "_noisy",
+                false,
+                false,
+                i,
+            )
+            .unwrap();
 
-                denoise(params, &path_clone, rendered_hdr_data, albedo_data, normal_data, i).unwrap();
-            }
-        )
+            denoise(
+                params,
+                &path_clone,
+                rendered_hdr_data,
+                albedo_data,
+                normal_data,
+                i,
+            )
+            .unwrap();
+        });
     }
+
+    // Wait for the loading thread to finish.
+    loading_thread.join().unwrap();
 
     Ok(())
 }
