@@ -98,6 +98,7 @@ cargo run --release --no-default-features
 - Output files are in `./output`
 - Executables are in the `./releases` folder
   - Note: Where you run the executable from isn't important as textures load relative to the scene file.
+- The `brutalist` & `pbr_test` scenes are animated
 
 ## Extra Credit Work
 - Denoising with OIDN (Open Image Denoise)
