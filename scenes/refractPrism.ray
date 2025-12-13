@@ -2,7 +2,7 @@
 
 Background {
 	# Color of the background 
-	color 0 0 0 
+	color 0.01 0.01 0.01
 	# low intensity white light
 	ambientLight 0.2 0.2 0.2
 }
@@ -14,21 +14,23 @@ Camera {
 	fovy 45
 }
 Lights {
-    	Light {
+    Light {
 		position 10 1 8
-		color 1 1 1
+		color 10 10 10
 	}
+
+	Light {
+        position 10 10 -8
+        color 10 10 10
+    }
 }
 
 Materials {
 	Material {
 		textureFilename NULL
-		diffuseColor 0.3 0.3 0.3
-		specularColor 0.3 0.3 0.3
-		reflectiveColor 0 0 0
 		shininess 100
-		transparentColor 0.8 0.8 0.8
-		indexOfRefraction 1.6
+		transparentColor 0.9 0.9 0.9
+		indexOfRefraction 1.5
 	}
 	Material {
 		textureFilename NULL

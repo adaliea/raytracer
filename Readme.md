@@ -1,10 +1,17 @@
 # A Raytracer Written in Rust
 
-A multithread raytracer written in Rust.
+A multithread raytracer written in Rust by Adalie Ahuja
+
+
+![](output/brutalist/brutalist_0.png)
+
+![](output/pbr_test/pbr_test_0.png)
+
+![](output/testEverything/testEverything_0.png)
 
 ## Getting Started
 
-This project uses some nightly Rust features, so it's recommended to use the latest version of Rust.
+This project uses some nightly Rust features, so you'll need to use latest nightly version of Rust.
 
 ### Installing Rust
 
@@ -24,6 +31,8 @@ rustup default nightly
 ### Building and Running
 
 There are two primary ways to build and run this project: using the provided Docker development environment, or setting up everything on your local machine.
+
+Or if you wish you can skip installing OIDN and use the `--no-default-features` with cargo to skip requiring it as a dependency (see below for details)
 
 #### Option 1: Using Docker (Recommended)
 
@@ -84,6 +93,11 @@ To build without the `denoise` feature, use the `--no-default-features` flag wit
 ```bash
 cargo run --release --no-default-features
 ```
+## Finding things
+- Scenes are in `./scenes`
+- Output files are in `./output`
+- Executables are in the `./releases` folder
+  - Note: Where you run the executable from isn't important as textures load relative to the scene file.
 
 ## Extra Credit Work
 - Denoising with OIDN (Open Image Denoise)
@@ -91,6 +105,7 @@ cargo run --release --no-default-features
     - Even 1 sample/pixel can get nice looking results! Useful for test renders
   - Also rendering normals & albedo values to improve denoising quality
   - Can be seen as the `_albedo`, `_normal`, & `_noisy` images
+- Anitialiasing
 - Tonemapping
   - Implemented basic tonemaping from the internal linear HDR image to the final SDR image.
   - Applies gamma correction as well
