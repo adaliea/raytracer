@@ -1,6 +1,6 @@
 # A Raytracer Written in Rust
 
-A multithread raytracer written in Rust by Adalie Ahuja
+A multithread raytracer written in Rust for one of my classes
 
 
 ![](output/brutalist/brutalist_0.png)
@@ -152,8 +152,6 @@ cargo run --release --no-default-features
   - BVH trees and optimized Rust code can calculate 11.5 million ray intersections / second in a scene with ~550k triangles
   - Simpler scenes can reach as high as 200 million ray intersections / second (with BVH trees disabled)
 - Easy to use command line interface
-- Rust
-  - All original memory safe code written by me in Rust
 
 # Credits
 ## Textures:
@@ -169,15 +167,3 @@ https://polyhaven.com/a/dirty_concrete
 https://polyhaven.com/a/coral_fort_wall_02
 https://polyhaven.com/a/metal_plate
 https://polyhaven.com/a/plastered_wall
-
-
-## AI usage
-
-Some repetative, non-raytracer code was written with the help of AI, namely:
-
-- Some of `./src/loader/file_format.rs`
-- Most of `./src/loader/parser.rs` -- Code in that parses the `.ray` files into a friendly format to use in rust.
-- The `./render_to_video.py` script to encode the final video into an mp4.
-- The `./scenes/textures/compress_exr.py` to re-encode exr files into a format the `image` crate can decode.
-- Some stuff regarding the devcontainer & Dockerfile
-- Some other small instances & to help with debugging in some cases.
