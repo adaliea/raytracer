@@ -1,7 +1,5 @@
 use glam::{Vec2, Vec3A};
 use serde::{Deserialize, Serialize};
-use splines::Interpolate;
-use std::time::Duration;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct Keyframe<T> {

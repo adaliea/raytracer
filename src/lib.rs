@@ -23,7 +23,7 @@ use rayon::prelude::*;
 use std::error::Error;
 use std::fs::create_dir;
 use std::iter::Peekable;
-use std::iter::once;
+
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;

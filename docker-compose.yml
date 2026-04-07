@@ -6,33 +6,34 @@ services:
       args:
         USER_UID: "${USER_UID:-1000}"
         USER_GID: "${USER_GID:-1000}"
+    image: raytracer-dev
     environment:
       - OIDN_DIR=/opt/oidn-2.3.3.x86_64.linux
       - LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
       - LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LIBRARY_PATH}
+      - CARGO_TARGET_DIR=/home/vscode/target
     volumes:
       - .:/workspace:cached
       - cargo-cache:/usr/local/cargo/registry
-      - target-cache:/workspace/target
+      - target-cache:/home/vscode/target
     working_dir: /workspace
-    command: sleep infinity
+    command: sh -c "sudo chown -R vscode:vscode /home/vscode/target /usr/local/cargo/registry && sleep infinity"
 
   test-render:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
+    image: raytracer-dev
     environment:
       - OIDN_DIR=/opt/oidn-2.3.3.x86_64.linux
       - LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
       - LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LIBRARY_PATH}
+      - CARGO_TARGET_DIR=/home/vscode/target
     volumes:
       - .:/workspace:cached
       - cargo-cache:/usr/local/cargo/registry
-      - target-cache:/workspace/target
+      - target-cache:/home/vscode/target
     working_dir: /workspace
-    user: root
     command: >
       sh -c "
+        sudo chown -R vscode:vscode /home/vscode/target /usr/local/cargo/registry &&
         cargo run --release -- --scene-path scenes/singleSphereLighted.ray --width 50 --height 50 --samples 100
       "
 

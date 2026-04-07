@@ -1,11 +1,11 @@
-# Start from a stable Rust image
-FROM rust:1.91-slim
+FROM rustlang/rust:nightly
 
-# Install the nightly toolchain, OIDN dependencies, and other useful dev tools
+# Install OIDN dependencies and other useful dev tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     tar \
+    sudo \
     libtbb12 \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
@@ -25,13 +25,15 @@ RUN groupadd --gid $USER_GID $USERNAME && \
     echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
+
 # Switch to the non-root user
 USER $USERNAME
 
-ENV PATH="/home/vscode/.cargo/bin:${PATH}"
+# Pre-create the target directory as the non-root user so Docker volume
+# initialization inherits the correct ownership instead of defaulting to root.
+RUN mkdir -p /home/vscode/target
 
-RUN rustup toolchain install nightly && \
-    rustup default nightly
+ENV PATH="/home/vscode/.cargo/bin:${PATH}"
 
 # Set up environment variables for OIDN
 ENV LD_LIBRARY_PATH=/opt/oidn-2.3.3.x86_64.linux/lib:${LD_LIBRARY_PATH}
